@@ -1,0 +1,50 @@
+DATA_FILE: str = "./connect_node.json"
+def search_nodes(keyword: str) ->str{
+    f: File = file(DATA_FILE, "r")
+    content: str = f.read()
+    f.close()
+    data: dict[str, any] = json_loads(content)
+    raw_nodes: list[any] = data["nodes"]
+    nodes: list[dict[str, any]] = []
+    for i in range(0, len(raw_nodes)) {
+		raw_N:dict[str, any] = raw_nodes[i]
+        nodes.append(raw_N)
+    }
+
+    kw: str = keyword.lower()
+    jj: int = 0
+    label: str = ""
+    found: int = 0
+    matches: list[dict[str, any]] = []
+
+    print("nodes:",nodes)
+
+    for idx in range(0, len(nodes)) {
+        print(2) 
+		Nodes_idx:dict[str, any] = nodes[idx]
+        label = str(Nodes_idx.get("label", "")).lower()
+        found = 0
+        jj = 0
+		if len(kw) <= len(label){
+            print("label:",label)
+			while jj <= len(label) - len(kw) {
+				if label[jj:jj+len(kw)] == kw {
+					found = 1
+					break
+					}
+					jj = jj + 1
+            }
+        }
+        if found == 1 {
+            matches.append(Nodes_idx)
+        }
+    }
+    print(3)     
+    print(json_dumps(matches))
+	return "search_node OK"
+}
+def main(args: list[str]){
+    print("[步骤 5] 搜索关键词 '示例' (search_nodes)\n")
+    retu_search_nodes:str = search_nodes("示例")
+    print(retu_search_nodes)
+}

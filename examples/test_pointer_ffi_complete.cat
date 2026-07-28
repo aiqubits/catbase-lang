@@ -1,0 +1,98 @@
+# test_pointer_ffi_complete.cat
+# 阶段 4：覆盖所有 C 库 FFI 模式
+# 涵盖：opus (音频) / vorbis / lame / ffmpeg / pulseaudio / portaudio / sndfile
+#      png / jpeg / webp (图像)
+#      字符串/缓冲区 C 接口
+
+import "/usr/lib/x86_64-linux-gnu/libc.so" as libc
+from libc import strlen(s: Pointer) -> int
+from libc import strcpy(dst: Pointer, src: Pointer) -> Pointer
+from libc import strcmp(s1: Pointer, s2: Pointer) -> int
+from libc import memcpy(dst: Pointer, src: Pointer, n: int) -> Pointer
+from libc import memset(dst: Pointer, c: int, n: int) -> Pointer
+from libc import malloc(size: int) -> Pointer
+from libc import free(ptr: Pointer)
+from libc import abs(x: int) -> int
+
+def main(args: list[str]) {
+    # ========== 1. 字符串/缓冲区 C 接口 ==========
+    # str -> cstr (最常用)
+    greeting: str = "Hello, World!"
+    g_cstr: Pointer = str_as_cstr(greeting)
+    n: int = libc.strlen(g_cstr)
+    print("[str] strlen =", n)  # 13
+
+    # strdup 模式：先 malloc 再 strcpy
+    buf: Pointer = libc.malloc(64)
+    src: Pointer = str_as_cstr(greeting)
+    libc.strcpy(buf, src)
+    copied_len: int = libc.strlen(buf)
+    print("[strcpy] strlen =", copied_len)  # 13
+    libc.free(buf)
+
+    # strcmp
+    s1: Pointer = str_as_cstr("apple")
+    s2: Pointer = str_as_cstr("banana")
+    cmp: int = libc.strcmp(s1, s2)
+    print("[strcmp] apple vs banana =", cmp)  # 负值
+
+    # ========== 2. 音频 PCM 缓冲区（i16 类型化指针） ==========
+    # 模拟 opus_encode / opus_decode / vorbis / lame / ffmpeg / portaudio / pulseaudio / sndfile
+    # 这些库通常使用 opus_int16 (i16) 或 float (f32) 数组
+    pcm_i16: bytes = bytes("00001111222233334444")  # 20 字节 = 10 个 int16
+    pcm_ptr: Pointer = bytes_as_int16_ptr(pcm_i16)
+    print("[opus/vorbis/lame/ffmpeg] i16 elem_size =", pcm_ptr.elem_size)
+    print("[opus/vorbis/lame/ffmpeg] i16 elem_count =", pcm_ptr.elem_count)
+    print("[opus/vorbis/lame/ffmpeg] i16 elem_type =", pcm_ptr.elem_type)
+
+    # f32 PCM（ffmpeg AV_SAMPLE_FMT_FLTP / portaudio / pulseaudio）
+    # 模拟 10 个 float 样本
+    pcm_f32: bytes = bytes("0000000011111111222222223333333344444444")  # 40 字节 = 10 个 float
+    pcm_f32_ptr: Pointer = bytes_as_float32_ptr(pcm_f32)
+    print("[ffmpeg/portaudio/pulseaudio] f32 elem_size =", pcm_f32_ptr.elem_size)
+    print("[ffmpeg/portaudio/pulseaudio] f32 elem_count =", pcm_f32_ptr.elem_count)
+    print("[ffmpeg/portaudio/pulseaudio] f32 elem_type =", pcm_f32_ptr.elem_type)
+
+    # ========== 3. sndfile（libsndfile）常用 u8/i16/f32 缓冲 ==========
+    # 8-bit 音频（u8）
+    pcm_u8: bytes = bytes("AABBCCDD")  # 4 字节 = 4 个 u8
+    pcm_u8_ptr: Pointer = bytes_as_uint8_ptr(pcm_u8)
+    print("[sndfile] u8 elem_size =", pcm_u8_ptr.elem_size)
+    print("[sndfile] u8 elem_count =", pcm_u8_ptr.elem_count)
+    print("[sndfile] u8 elem_type =", pcm_u8_ptr.elem_type)
+
+    # ========== 4. 图像 RGBA（png/jpeg/webp）通常用 u8 数组 ==========
+    # 4 个像素 RGBA
+    rgba: bytes = bytes("11223344")  # 4 像素 × 1 通道；按 u8 解释
+    rgba_ptr: Pointer = bytes_as_uint8_ptr(rgba)
+    print("[png/jpeg/webp] u8 elem_size =", rgba_ptr.elem_size)
+    print("[png/jpeg/webp] u8 elem_count =", rgba_ptr.elem_count)
+    print("[png/jpeg/webp] u8 elem_type =", rgba_ptr.elem_type)
+
+    # 16-bit 灰度图像（医学/科学图像）
+    gray16: bytes = bytes("0000111122223333")  # 8 字节 = 4 个 u16
+    gray16_ptr: Pointer = bytes_as_uint16_ptr(gray16)
+    print("[png 16bit] u16 elem_size =", gray16_ptr.elem_size)
+    print("[png 16bit] u16 elem_count =", gray16_ptr.elem_count)
+    print("[png 16bit] u16 elem_type =", gray16_ptr.elem_type)
+
+    # ========== 5. 错误码（int -> int32 指针） ==========
+    # C 库错误处理：int err = 0; lib_func(..., &err);
+    err_code: int = 0
+    err_ptr: Pointer = int32_ptr(err_code)
+    print("[err code] i32 elem_size =", err_ptr.elem_size)
+    print("[err code] i32 elem_count =", err_ptr.elem_count)
+    print("[err code] i32 elem_type =", err_ptr.elem_type)
+
+    # ========== 6. 不透明句柄（Pointer.of / malloc 返回值） ==========
+    # 模拟任何 C 库：opus_encoder_create / SDL_CreateWindow / fopen / sqlite3_open
+    handle: Pointer = libc.malloc(128)
+    print("[handle] is_null =", handle.is_null())
+    libc.free(handle)
+
+    # ========== 7. 标量 FFI（回归） ==========
+    a: int = abs(-100)
+    print("[abs] =", a)
+
+    print("ALL TESTS PASSED")
+}

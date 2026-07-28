@@ -1,0 +1,40 @@
+// CatBase class 关键字示例 3
+// 演示：组合（composition）替代继承
+// CatBase 不支持继承，但支持组合实现代码复用
+
+class Animal {
+    name: str
+    age: int
+
+    def describe() -> str {
+        return self.name + " is " + str(self.age) + " years old"
+    }
+}
+
+// 用组合实现"Dog 包含 Animal"（而不是继承）
+class Dog {
+    animal: Animal      // 组合：Dog 内部包含一个 Animal
+    breed: str
+
+    def describe() -> str {
+        return self.animal.describe() + " (" + self.breed + ")"
+    }
+
+    def bark(self) -> str {
+        return self.breed + " says Woof!"
+    }
+}
+
+def make_dog(name: str, age: int, breed: str) -> Dog {
+    return Dog {
+        animal: Animal { name: name, age: age },
+        breed: breed
+    }
+}
+
+def main(args: list[str]) {
+    dog: Dog = make_dog("Rex", 5, "Labrador")
+    print(dog.describe())
+    print(dog.bark())
+    print("Dog's name:", dog.animal.name)
+}

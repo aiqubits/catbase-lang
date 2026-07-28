@@ -1,0 +1,25 @@
+# import_state.cat - 测试多种类型的包全局变量
+counter:int = 0
+label:str = "init"
+flag:bool = False
+items:list[int] = []
+record:dict[str, int] = {"k": 0}
+
+def inc(n:int) {
+    counter = counter + n
+    items.append(n)
+    record["last"] = n
+    flag = True
+}
+
+def reset() {
+    counter = 0
+    label = "reset"
+    flag = False
+    items = []
+    record = {"k": 0}
+}
+
+def get_summary() -> str {
+    return label + ":" + str(counter) + ":" + str(flag)
+}

@@ -1,0 +1,33 @@
+// CatBase class 关键字示例 2
+// 演示：class 与 struct 完全等价，可以混用
+
+// 用 class 声明
+class Vector {
+    x: int
+    y: int
+
+    def length_squared() -> int {
+        return self.x * self.x + self.y * self.y
+    }
+}
+
+// 用 struct 声明（与 class 完全等价）
+struct Color {
+    r: int
+    g: int
+    b: int
+
+    def to_hex_str() -> str {
+        return "#" + str(self.r) + str(self.g) + str(self.b)
+    }
+}
+
+def main(args: list[str]) {
+    # class 和 struct 行为完全相同
+    v: Vector = Vector { x: 3, y: 4 }
+    print("Vector:", v.x, v.y)
+    print("length squared =", v.length_squared())
+
+    c: Color = Color { r: 255, g: 128, b: 0 }
+    print("Hex:", c.to_hex_str())
+}

@@ -1,0 +1,99 @@
+// Test: Queue put/get 支持 bytes 类型
+def main(args:list[str]) {
+    print("=== Queue 多类型 put/get 测试 ===\n")
+
+    # ============================================
+    # 测试 1：str 类型（原有功能，回归测试）
+    # ============================================
+    print("--- 测试 1：str 类型 ---\n")
+    q1: Queue = queue(10)
+    q1.put("Hello", -1)
+    q1.put("World", -1)
+    print("put 'Hello', 'World' (str)")
+
+    s1: str = q1.get_nowait().getStr()
+    print("get as str: ", s1)
+    s2: str = q1.get_nowait().getStr()
+    print("get as str: ", s2)
+    print("✓ str 类型 put/get 正常")
+
+    # ============================================
+    # 测试 2：int 类型（原有功能，回归测试）
+    # ============================================
+    print("\n--- 测试 2：int 类型 ---\n")
+    q2: Queue = queue(10)
+    q2.put(100, -1)
+    q2.put(200, -1)
+    q2.put(300, -1)
+    print("put 100, 200, 300 (int)")
+
+    n1: int = q2.get_nowait().getInt()
+    n2: int = q2.get_nowait().getInt()
+    n3: int = q2.get_nowait().getInt()
+    print("get as int: ", n1, ", ", n2, ", ", n3)
+    print("✓ int 类型 put/get 正常")
+
+    # ============================================
+    # 测试 3：float 类型（原有功能，回归测试）
+    # ============================================
+    print("\n--- 测试 3：float 类型 ---\n")
+    q3: Queue = queue(10)
+    q3.put(3.14, -1)
+    q3.put(2.71, -1)
+    print("put 3.14, 2.71 (float)")
+
+    f1: float = q3.get_nowait().getFloat()
+    f2: float = q3.get_nowait().getFloat()
+    print("get as float: ", f1, ", ", f2)
+    print("✓ float 类型 put/get 正常")
+
+    # ============================================
+    # 测试 4：bytes 类型（新增功能）
+    # ============================================
+    print("\n--- 测试 4：bytes 类型（新增）---\n")
+    q4: Queue = queue(10)
+    bs1: bytes = b"Hello"
+    bs2: bytes = b"World"
+    q4.put(bs1, -1)
+    q4.put(bs2, -1)
+    print("put b'Hello', b'World' (bytes)")
+
+    b1: bytes = q4.get_nowait().getBytes()
+    b2: bytes = q4.get_nowait().getBytes()
+    print("b1[0]=", b1[0], " b2[0]=", b2[0])
+    print("✓ bytes 类型 put/get 正常")
+
+    # ============================================
+    # 测试 5：bytes 包含二进制数据
+    # ============================================
+    print("\n--- 测试 5：bytes 二进制数据 ---\n")
+    q5: Queue = queue(10)
+    bs3: bytes = b"\x00\xFF\x42\x33"
+    q5.put(bs3, -1)
+    print("put b'\\x00\\xFF\\x42\\x33' (bytes)")
+
+    b3: bytes = q5.get_nowait().getBytes()
+    print("b3[0]=", b3[0], " b3[1]=", b3[1])
+    print("✓ 二进制 bytes put/get 正常")
+
+    # ============================================
+    # 测试 6：与 audio callback 一致的用法
+    # ============================================
+    print("\n--- 测试 6：模拟 audio callback 场景 ---\n")
+    audio_queue: Queue = queue(100)
+
+    # 模拟音频回调：接收 bytes 数据并 put
+    # （在真实场景中 on_audio_data 是 callback，data 是 bytes 参数）
+    data1: bytes = b"\x01\x02\x03\x04"
+    data2: bytes = b"\x05\x06\x07\x08"
+    audio_queue.put(data1, -1)
+    audio_queue.put(data2, -1)
+    print("✓ 模拟 audio callback put bytes 成功")
+
+    # 模拟音频处理器：get bytes
+    if !audio_queue.empty() {
+        audio_data: bytes = audio_queue.get_nowait().getBytes()
+        print("✓ 模拟 audio processor get bytes 成功, data[0]=", audio_data[0])
+    }
+    print("\n=== 所有测试通过 ===")
+}

@@ -1,0 +1,4 @@
+# examples/test_pkg_local.catc - ./ 前缀 import 解析到的目标文件
+def local_msg() {
+    print("Hello from <source>/test_pkg_local.catc!")
+}

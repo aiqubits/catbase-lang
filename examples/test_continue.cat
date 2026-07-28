@@ -1,0 +1,313 @@
+# CatBase break 与 continue 关键字综合测试
+# 验证 break 和 continue 在 while 循环和 for 循环中的行为与交互
+
+# =====================
+# 测试 1: 基本 break - 找到目标即停止
+# =====================
+def test_basic_break() {
+    print("--- Test 1: basic break ---\n")
+    i: int = 0
+    while i < 100 {
+        if i == 5 {
+            print("found target: ", i, "\n")
+            break    # 找到 5 即停止
+        }
+        i = i + 1
+    }
+    print("loop ended at i=", i, "\n")
+}
+
+# =====================
+# 测试 2: 基本 continue - 跳过特定值
+# =====================
+def test_basic_continue() {
+    print("--- Test 2: basic continue ---\n")
+    i: int = 0
+    while i < 8 {
+        i = i + 1
+        if i == 3 {
+            continue    # 跳过 3
+        }
+        if i == 6 {
+            continue    # 跳过 6
+        }
+        print(i, " ")
+    }
+    print("\n")
+}
+
+# =====================
+# 测试 3: break + continue 组合
+# =====================
+def test_break_with_continue() {
+    print("--- Test 3: break + continue together ---\n")
+    i: int = 0
+    while i < 20 {
+        i = i + 1
+        if i == 3 {
+            continue    # 跳过 3
+        }
+        if i == 7 {
+            continue    # 跳过 7
+        }
+        if i == 12 {
+            break       # 在 12 处跳出
+        }
+        print(i, " ")
+    }
+    print("\n")
+}
+
+# =====================
+# 测试 4: break 跳出死循环
+# =====================
+def test_break_dead_loop() {
+    print("--- Test 4: break out of dead loop ---\n")
+    counter: int = 0
+    while counter < 999 {
+        counter = counter + 1
+        if counter >= 5 {
+            break    # 防止死循环
+        }
+        print("counter=", counter, "\n")
+    }
+    print("exited dead loop, counter=", counter, "\n")
+}
+
+# =====================
+# 测试 5: continue 在循环开头
+# =====================
+def test_continue_at_start() {
+    print("--- Test 5: continue at start of loop ---\n")
+    i: int = 0
+    while i < 6 {
+        i = i + 1
+        if i == 2 {
+            continue    # 在所有 print 之前跳过
+        }
+        if i == 4 {
+            continue
+        }
+        print("processed i=", i, "\n")
+    }
+}
+
+# =====================
+# 测试 6: for 循环 + break
+# =====================
+def test_for_break() {
+    print("--- Test 6: for loop with break ---\n")
+    i: int = 0
+    for i in range(0, 10) {
+        if i == 7 {
+            print("hit target at i=", i, "\n")
+            break
+        }
+        print(i, " ")
+    }
+    print("\n")
+}
+
+# =====================
+# 测试 7: for 循环 + continue
+# =====================
+def test_for_continue() {
+    print("--- Test 7: for loop with continue ---\n")
+    i: int = 0
+    for i in range(0, 8) {
+        if i == 3 {
+            continue    # 跳过 3
+        }
+        if i == 5 {
+            continue    # 跳过 5
+        }
+        print(i, " ")
+    }
+    print("\n")
+}
+
+# =====================
+# 测试 8: 嵌套循环 - break 只跳内层
+# =====================
+def test_nested_break() {
+    print("--- Test 8: nested break (only inner) ---\n")
+    i: int = 0
+    while i < 3 {
+        print("outer i=", i, ": ")
+        j: int = 0
+        while j < 5 {
+            if j == 2 {
+                break    # 只跳出内层
+            }
+            print(j, " ")
+            j = j + 1
+        }
+        print("\n")
+        i = i + 1
+    }
+}
+
+# =====================
+# 测试 9: 嵌套循环 - continue 只跳内层
+# =====================
+def test_nested_continue() {
+    print("--- Test 9: nested continue (only inner) ---\n")
+    i: int = 0
+    while i < 3 {
+        j: int = 0
+        while j < 4 {
+            j = j + 1
+            if j == 2 {
+                continue    # 只跳过内层的 2
+            }
+            print("(", i, ",", j, ") ")
+        }
+        print("\n")
+        i = i + 1
+    }
+}
+
+# =====================
+# 测试 10: 多层 break（flag 模式）
+# =====================
+def test_multilevel_break() {
+    print("--- Test 10: multi-level break via flag ---\n")
+    i: int = 0
+    found: int = 0
+    while i < 4 {
+        if found == 1 {
+            break
+        }
+        j: int = 0
+        while j < 4 {
+            if i == 2 and j == 3 {
+                print("found target at (", i, ",", j, ")\n")
+                found = 1
+                break    # 跳出内层
+            }
+            j = j + 1
+        }
+        i = i + 1
+    }
+    print("search ended, found=", found, "\n")
+}
+
+# =====================
+# 测试 11: 列表过滤（continue）
+# =====================
+def test_list_filter() {
+    print("--- Test 11: list filter with continue ---\n")
+    nums: list[int] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    i: int = 0
+    print("Filter out 3, 6, 9: ")
+    while i < len(nums) {
+        if nums[i] == 3 {
+            i = i + 1
+            continue
+        }
+        if nums[i] == 6 {
+            i = i + 1
+            continue
+        }
+        if nums[i] == 9 {
+            i = i + 1
+            continue
+        }
+        print(nums[i], " ")
+        i = i + 1
+    }
+    print("\n")
+}
+
+# =====================
+# 测试 12: 查找 + break 提前退出
+# =====================
+def test_search_with_break() {
+    print("--- Test 12: search with break ---\n")
+    nums: list[int] = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
+    target: int = 50
+    found_index: int = -1
+    i: int = 0
+    while i < len(nums) {
+        if nums[i] == target {
+            found_index = i
+            break    # 找到即停止
+        }
+        i = i + 1
+    }
+    if found_index >= 0 {
+        print("Found ", target, " at index ", found_index, "\n")
+    } else {
+        print("Not found\n")
+    }
+}
+
+# =====================
+# 测试 13: continue 在 for 循环 + break
+# =====================
+def test_for_continue_and_break() {
+    print("--- Test 13: for continue + break ---\n")
+    i: int = 0
+    for i in range(0, 20) {
+        if i == 2 {
+            continue    # 跳过 2
+        }
+        if i == 5 {
+            continue    # 跳过 5
+        }
+        if i == 10 {
+            break       # 在 10 跳出
+        }
+        print(i, " ")
+    }
+    print("\n")
+}
+
+# =====================
+# 测试 14: 复杂的过滤与终止组合
+# =====================
+def test_complex_filter_and_stop() {
+    print("--- Test 14: complex filter and stop ---\n")
+    i: int = 0
+    while i < 30 {
+        i = i + 1
+        # 跳过 1, 3, 5
+        if i == 1 {
+            continue
+        }
+        if i == 3 {
+            continue
+        }
+        if i == 5 {
+            continue
+        }
+        # 在 15 停止
+        if i == 15 {
+            print("stop at 15\n")
+            break
+        }
+        print(i, " ")
+    }
+    print("\n")
+}
+
+# =====================
+# 主函数
+# =====================
+def main(args: list[str]) {
+    test_basic_break()
+    test_basic_continue()
+    test_break_with_continue()
+    test_break_dead_loop()
+    test_continue_at_start()
+    test_for_break()
+    test_for_continue()
+    test_nested_break()
+    test_nested_continue()
+    test_multilevel_break()
+    test_list_filter()
+    test_search_with_break()
+    test_for_continue_and_break()
+    test_complex_filter_and_stop()
+    print("\n=== All break/continue tests completed ===\n")
+}

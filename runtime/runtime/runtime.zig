@@ -163,27 +163,56 @@ pub fn range(allocator: Allocator, args: [3]i64) List(i64) {
 }
 
 // 打印文件操作错误的详细信息
-fn printFileError(path: []const u8, err: anyerror) void {
+// source_loc: CatBase 源文件位置，格式 "filename:line"，可以为空字符串
+fn printFileError(path: []const u8, err: anyerror, source_loc: []const u8) void {
+    std.debug.print("\nError: file operation failed\n", .{});
+
+    // 关键修复：当 path 为空时，明确提示用户路径无效
+    if (path.len == 0) {
+        std.debug.print("  Reason: {s}\n", .{@errorName(err)});
+        std.debug.print("  Path: <empty string> (file path was not specified or was truncated)\n", .{});
+        std.debug.print("  Hint: The file path appears to be empty.\n", .{});
+        std.debug.print("        - Check if the variable holding the path was correctly initialized\n", .{});
+        std.debug.print("        - Check if string operations (e.g. string concatenation) caused data truncation\n", .{});
+        std.debug.print("        - Use an absolute path like /tmp/data.json\n", .{});
+        if (source_loc.len > 0) {
+            std.debug.print("  Source: {s}\n", .{source_loc});
+        }
+        return;
+    }
+
+    std.debug.print("  Reason: {s}\n", .{@errorName(err)});
+
     // 使用 stack buffer 获取绝对工作目录
     var cwd_buf: [std.fs.max_path_bytes]u8 = undefined;
-    std.debug.print("\nError: file operation failed: {s}\n", .{path});
-    std.debug.print("  Reason: {s}\n", .{@errorName(err)});
     if (std.fs.cwd().realpath(".", &cwd_buf)) |dir| {
-        std.debug.print("  Searched in: {s}/\n", .{dir});
-        // 拼接绝对路径
         if (std.fs.path.isAbsolute(path)) {
-            std.debug.print("  Absolute path: {s}\n", .{path});
+            // 绝对路径：直接打印，并显示它指向的文件
+            std.debug.print("  File path: {s} (absolute path)\n", .{path});
+            std.debug.print("  Searched at: {s}\n", .{path});
         } else {
-            std.debug.print("  Absolute path: {s}/{s}\n", .{ dir, path });
+            // 相对路径：拼接绝对路径
+            std.debug.print("  File path: {s} (relative path)\n", .{path});
+            std.debug.print("  Current working directory: {s}/\n", .{dir});
+            std.debug.print("  Searched at: {s}/{s}\n", .{ dir, path });
         }
     } else |_| {
-        std.debug.print("  Searched in: <could not determine current directory>\n", .{});
+        std.debug.print("  File path: {s}\n", .{path});
+        std.debug.print("  Searched at: <could not determine absolute path>\n", .{});
     }
+
+    // 显示 CatBase 源文件位置（如果提供）
+    if (source_loc.len > 0) {
+        std.debug.print("  Source location: {s} (CatBase source file)\n", .{source_loc});
+    }
+
     // 针对常见错误提供建议
     switch (err) {
         error.FileNotFound => {
-            std.debug.print("  Hint: Check that the file exists in the current working directory,\n", .{});
-            std.debug.print("        or use an absolute path (e.g., /tmp/data.json).\n", .{});
+            std.debug.print("  Hint: The file does not exist.\n", .{});
+            std.debug.print("        - Check the spelling of the filename\n", .{});
+            std.debug.print("        - Check that the file exists in the directory shown above\n", .{});
+            std.debug.print("        - Or use an absolute path (e.g., /tmp/data.json)\n", .{});
         },
         error.AccessDenied => {
             std.debug.print("  Hint: Check file permissions (read/write access).\n", .{});
@@ -204,7 +233,7 @@ pub const File = struct {
     file: std.fs.File,
     allocator: Allocator,
 
-    pub fn open(allocator: Allocator, path: Str, mode: Str) !Self {
+    pub fn open(allocator: Allocator, path: Str, mode: Str, source_loc: Str) !Self {
         if (std.mem.eql(u8, mode.data, "w") or std.mem.eql(u8, mode.data, "a")) {
             const file = std.fs.cwd().createFile(path.data, .{ .truncate = false });
             if (file) |f| {
@@ -213,7 +242,7 @@ pub const File = struct {
                     .allocator = allocator,
                 };
             } else |err| {
-                printFileError(path.data, err);
+                printFileError(path.data, err, source_loc.data);
                 return err;
             }
         } else {
@@ -224,7 +253,7 @@ pub const File = struct {
                     .allocator = allocator,
                 };
             } else |err| {
-                printFileError(path.data, err);
+                printFileError(path.data, err, source_loc.data);
                 return err;
             }
         }
@@ -232,8 +261,8 @@ pub const File = struct {
 
     // 安全打开文件，如果失败则退出
     // 注意：详细错误信息由 File.open 内部打印，此处只负责退出，避免重复输出
-    pub fn openSafe(allocator: Allocator, path: Str, mode: Str) Self {
-        return open(allocator, path, mode) catch {
+    pub fn openSafe(allocator: Allocator, path: Str, mode: Str, source_loc: Str) Self {
+        return open(allocator, path, mode, source_loc) catch {
             std.process.exit(1);
         };
     }
@@ -245,6 +274,7 @@ pub const File = struct {
             .data = content,
             .allocator = std.heap.page_allocator,
             .owned = true,
+            .is_bytes = false,
         };
     }
 
@@ -288,6 +318,7 @@ pub const RecordStream = struct {
     allocator: Allocator,
     running: bool,
     callback: ?*const fn (data: Str) void,
+    callback_bytes: ?*const fn (data: []u8) void, // 新增：bytes 回调
     device_name_buf: ?[]u8, // 保存设备名称缓冲区的所有权
 
     // 创建录音流
@@ -387,6 +418,7 @@ pub const RecordStream = struct {
             .allocator = allocator,
             .running = false,
             .callback = null,
+            .callback_bytes = null, // 初始化 bytes 回调为 null
             .device_name_buf = device_name_buf,
         };
     }
@@ -394,6 +426,11 @@ pub const RecordStream = struct {
     // 设置回调函数
     pub fn setCallback(self: *Self, callback: *const fn (data: Str) void) void {
         self.callback = callback;
+    }
+
+    // 设置 bytes 回调函数（新增）
+    pub fn setBytesCallback(self: *Self, callback: *const fn (data: []u8) void) void {
+        self.callback_bytes = callback;
     }
 
     // 带回调的异步录音
@@ -433,6 +470,10 @@ pub const RecordStream = struct {
                     .owned = false,
                 };
                 cb(data);
+            } else if (self.callback_bytes) |cb| {
+                // bytes 回调：直接传 []u8，buffer 会在下面被释放
+                // 注意：回调内必须完成数据处理或复制，buffer 释放后失效
+                cb(buffer[0..actual_bytes]);
             }
 
             safe_allocator.free(buffer);
@@ -504,6 +545,7 @@ pub const PlayStream = struct {
     allocator: Allocator,
     running: bool,
     callback: ?*const fn () Str,
+    callback_bytes: ?*const fn () []u8, // 新增：bytes 回调（无参返回 []u8）
     device_name_buf: ?[]u8, // 保存设备名称缓冲区的所有权
 
     // 创建播放流
@@ -581,6 +623,7 @@ pub const PlayStream = struct {
             .allocator = allocator,
             .running = false,
             .callback = null,
+            .callback_bytes = null, // 初始化 bytes 回调为 null
             .device_name_buf = device_name_buf,
         };
     }
@@ -588,6 +631,11 @@ pub const PlayStream = struct {
     // 设置回调函数
     pub fn setCallback(self: *Self, callback: *const fn () Str) void {
         self.callback = callback;
+    }
+
+    // 设置 bytes 回调函数（新增，无参返回 []u8）
+    pub fn setBytesCallback(self: *Self, callback: *const fn () []u8) void {
+        self.callback_bytes = callback;
     }
 
     // 带回调的异步播放
@@ -608,6 +656,18 @@ pub const PlayStream = struct {
 
             if (self.callback) |cb| {
                 data = cb();
+            } else if (self.callback_bytes) |cb| {
+                // bytes 回调：直接调用获取 []u8
+                const bytes_data = cb();
+                if (bytes_data.len == 0) {
+                    std.time.sleep(10_000_000);
+                    continue;
+                }
+                // 写入音频数据
+                const frames_to_write = @min(self.chunk, @as(c_ulong, @intCast(bytes_data.len)) / (@as(c_ulong, self.channels) * bytes_per_sample));
+                const frames_written = alsa.snd_pcm_writei(self.playback_handle, bytes_data.ptr, frames_to_write);
+                _ = frames_written;
+                continue;
             } else {
                 // 如果没有回调，等待一小段时间
                 std.time.sleep(10_000_000);
@@ -975,6 +1035,212 @@ pub const JsonValue = union(enum) {
     }
 };
 
+// =====================================================================
+// Bytes 类型运行时支持
+// =====================================================================
+// 真正的 bytes 类型 = []u8 slice
+// 智能分配：小数据用静态池（"栈式"），大数据用堆
+
+const SmallBufferSize: usize = 4096;
+const NumSmallBuffers: usize = 64;
+
+const SmallBufferPool = struct {
+    buffers: [NumSmallBuffers][SmallBufferSize]u8 = [_][SmallBufferSize]u8{[_]u8{0} ** SmallBufferSize} ** NumSmallBuffers,
+    used: [NumSmallBuffers]bool = [_]bool{false} ** NumSmallBuffers,
+    mutex: std.Thread.Mutex = .{},
+
+    pub fn alloc(self: *@This(), n: usize) ?[]u8 {
+        if (n > SmallBufferSize) return null;
+        self.mutex.lock();
+        defer self.mutex.unlock();
+        for (&self.used, 0..) |*u, i| {
+            if (!u.*) {
+                u.* = true;
+                return self.buffers[i][0..n];
+            }
+        }
+        return null;
+    }
+
+    pub fn free(self: *@This(), b: []u8) bool {
+        if (b.len > SmallBufferSize) return false;
+        self.mutex.lock();
+        defer self.mutex.unlock();
+        for (self.buffers[0..], 0..) |*buf, i| {
+            if (b.ptr == buf[0..].ptr) {
+                self.used[i] = false;
+                return true;
+            }
+        }
+        return false;
+    }
+};
+
+var small_pool: SmallBufferPool = .{};
+
+/// 智能分配 bytes：小数据用静态池，大数据用堆
+pub fn bytesAlloc(allocator: Allocator, n: usize) []u8 {
+    if (n == 0) {
+        return &[_]u8{};
+    }
+    if (small_pool.alloc(n)) |buf| {
+        return buf;
+    }
+    return allocator.alloc(u8, n) catch unreachable;
+}
+
+/// 智能释放 bytes
+pub fn bytesFree(allocator: Allocator, b: []u8) void {
+    if (b.len == 0) return;
+    if (small_pool.free(b)) return;
+    allocator.free(b);
+}
+
+/// 智能分配（从 byte[N] 数组复制数据）
+pub fn bytesFromArray(allocator: Allocator, src: []const u8) []u8 {
+    const dst = bytesAlloc(allocator, src.len);
+    @memcpy(dst, src);
+    return dst;
+}
+
+/// 获取 bytes 的数据指针（用于 FFI）
+/// 返回的指针需要外部包装为 Pointer（Pointer 在 main.go 中定义）
+pub fn bytesPtr(b: []u8) [*]u8 {
+    return b.ptr;
+}
+
+// ============================================================================
+// 类型化指针构造函数（支持所有 C ABI 元素类型）
+// 配合 main.go 生成的 Pointer.of / Pointer.typed 使用
+// ============================================================================
+
+/// 标量转类型化指针（int 8/16/32/64、u 8/16/32/64、float 32/64）
+/// 这些函数在 CatBase 里通过 runtime 命名空间直接调用
+/// 注意：函数参数是 const 的（值传递），所以 &v 是 *const T，需要 @constCast
+/// 否则 @ptrCast 会在新版 Zig 上报 "discards const qualifier"
+pub fn int8Ptr(v: i8) [*]u8 {
+    return @ptrCast(@constCast(&v));
+}
+pub fn uint8Ptr(v: u8) [*]u8 {
+    return @ptrCast(@constCast(&v));
+}
+pub fn int16Ptr(v: i16) [*]u8 {
+    return @ptrCast(@constCast(&v));
+}
+pub fn uint16Ptr(v: u16) [*]u8 {
+    return @ptrCast(@constCast(&v));
+}
+pub fn int32Ptr(v: i32) [*]u8 {
+    return @ptrCast(@constCast(&v));
+}
+pub fn uint32Ptr(v: u32) [*]u8 {
+    return @ptrCast(@constCast(&v));
+}
+pub fn int64Ptr(v: i64) [*]u8 {
+    return @ptrCast(@constCast(&v));
+}
+pub fn uint64Ptr(v: u64) [*]u8 {
+    return @ptrCast(@constCast(&v));
+}
+pub fn float32Ptr(v: f32) [*]u8 {
+    return @ptrCast(@constCast(&v));
+}
+pub fn float64Ptr(v: f64) [*]u8 {
+    return @ptrCast(@constCast(&v));
+}
+
+/// bytes 转类型化数组指针（reinterpret 转换，零拷贝）
+/// 调用方必须保证 bytes.len 能被 elem_size 整除
+/// 返回 (裸指针, 元素个数) — main.go 配合 Pointer.typed() 填 elem_count
+pub fn bytesAsInt8Ptr(b: []u8) [*]u8 {
+    return b.ptr;
+}
+pub fn bytesAsUint8Ptr(b: []u8) [*]u8 {
+    return b.ptr;
+}
+pub fn bytesAsInt16Ptr(b: []u8) [*]u8 {
+    std.debug.assert(b.len % 2 == 0); // i16 = 2 bytes
+    return b.ptr;
+}
+pub fn bytesAsUint16Ptr(b: []u8) [*]u8 {
+    std.debug.assert(b.len % 2 == 0);
+    return b.ptr;
+}
+pub fn bytesAsInt32Ptr(b: []u8) [*]u8 {
+    std.debug.assert(b.len % 4 == 0);
+    return b.ptr;
+}
+pub fn bytesAsUint32Ptr(b: []u8) [*]u8 {
+    std.debug.assert(b.len % 4 == 0);
+    return b.ptr;
+}
+pub fn bytesAsInt64Ptr(b: []u8) [*]u8 {
+    std.debug.assert(b.len % 8 == 0);
+    return b.ptr;
+}
+pub fn bytesAsUint64Ptr(b: []u8) [*]u8 {
+    std.debug.assert(b.len % 8 == 0);
+    return b.ptr;
+}
+pub fn bytesAsFloat32Ptr(b: []u8) [*]u8 {
+    std.debug.assert(b.len % 4 == 0);
+    return b.ptr;
+}
+pub fn bytesAsFloat64Ptr(b: []u8) [*]u8 {
+    std.debug.assert(b.len % 8 == 0);
+    return b.ptr;
+}
+
+/// bytes 元素个数（按指定元素类型）
+pub fn bytesCountAs(b: []u8, elem_size: usize) usize {
+    std.debug.assert(elem_size > 0 and b.len % elem_size == 0);
+    return b.len / elem_size;
+}
+
+/// str 转 C 字符串指针（const char*，末尾加 \0）
+pub fn strAsCStr(allocator: Allocator, s: []const u8) ![:0]u8 {
+    const buf = try allocator.allocSentinel(u8, s.len, 0);
+    @memcpy(buf[0..s.len], s);
+    return buf;
+}
+
+/// str 转 C 字符串指针（const char*，借用原 buffer，不复制，调用方保证生命周期）
+/// 返回 [*]u8（与 Pointer.typed 签名匹配），通过 .elem_type = .c_char 表明元素类型
+/// 注意：原 Str 的 data 不保证 \0 结尾（dupe 不带 sentinel），所以这里使用
+/// Str.allocator 分配一个带 \0 结尾的副本，调用方用完需 free
+pub fn strAsCStrBorrowed(s: Str) [*]u8 {
+    // 通过 Str.allocator 分配一个带 \0 结尾的副本，避免原 Str 不带 sentinel
+    const buf = s.allocator.allocSentinel(u8, s.data.len, 0) catch unreachable;
+    @memcpy(buf[0..s.data.len], s.data);
+    return buf.ptr;
+}
+
+/// 用 str 字面量做 C 字符串（const char*，编译期常量，零运行时分配）
+pub fn cstr(comptime s: []const u8) [*c]const u8 {
+    return s.ptr;
+}
+
+/// bytes 转 str（复制数据，str 独立管理内存）
+pub fn bytesToStr(allocator: Allocator, b: []u8) !Str {
+    return Str{
+        .data = try allocator.dupe(u8, b),
+        .allocator = allocator,
+        .owned = true,
+        .is_bytes = true,
+    };
+}
+
+/// 从 bytes 字面量创建 []u8 切片（运行时复制，可变内存）
+/// 用于 b"..." 字面量 - 因为字面量是 const，必须复制才能得到 []u8
+pub fn bytesFromLiteral(allocator: Allocator, comptime arr: anytype) []u8 {
+    return allocator.dupe(u8, arr) catch unreachable;
+}
+
+/// str 转 bytes（复制数据，bytes 独立内存）
+pub fn strToBytes(allocator: Allocator, s: Str) []u8 {
+    return bytesFromArray(allocator, s.data);
+}
+
 // 将 JsonValue 转换为 Str
 pub fn strFromJsonValue(allocator: Allocator, jv: JsonValue) !Str {
     return switch (jv) {
@@ -982,9 +1248,9 @@ pub fn strFromJsonValue(allocator: Allocator, jv: JsonValue) !Str {
         .int => |i| Str.init(allocator, std.fmt.allocPrint(allocator, "{d}", .{i}) catch unreachable),
         .float => |f| Str.init(allocator, std.fmt.allocPrint(allocator, "{d}", .{f}) catch unreachable),
         .bool => |b| if (b) Str.init(allocator, std.fmt.allocPrint(allocator, "true", .{}) catch unreachable) else Str.init(allocator, std.fmt.allocPrint(allocator, "false", .{}) catch unreachable),
-        .null => Str.init(allocator, std.fmt.allocPrint(allocator, "null", .{}) catch unreachable),
-        .list => Str.init(allocator, std.fmt.allocPrint(allocator, "[list]", .{}) catch unreachable),
-        .dict => Str.init(allocator, std.fmt.allocPrint(allocator, "[dict]", .{}) catch unreachable),
+        .null => Str.init(allocator, std.fmt.allocPrint(allocator, "None", .{}) catch unreachable),
+        .list => |*l| jsonStringify(allocator, l),
+        .dict => |*d| jsonStringify(allocator, d),
     };
 }
 
@@ -993,6 +1259,7 @@ pub const Str = struct {
     data: []u8,
     allocator: Allocator,
     owned: bool,
+    is_bytes: bool = false,
 
     pub fn init(allocator: Allocator, bytes: []const u8) !Str {
         const copy = try allocator.dupe(u8, bytes);
@@ -1000,6 +1267,17 @@ pub const Str = struct {
             .data = copy,
             .allocator = allocator,
             .owned = true,
+            .is_bytes = false,
+        };
+    }
+
+    pub fn initBytes(allocator: Allocator, bytes: []const u8) !Str {
+        const copy = try allocator.dupe(u8, bytes);
+        return Str{
+            .data = copy,
+            .allocator = allocator,
+            .owned = true,
+            .is_bytes = true,
         };
     }
 
@@ -1080,11 +1358,15 @@ pub const Str = struct {
     }
 
     pub fn clone(self: *const Str) !Str {
-        return init(self.allocator, self.data);
+        var result = try init(self.allocator, self.data);
+        result.is_bytes = self.is_bytes;
+        return result;
     }
 
     pub fn cloneWithAllocator(self: *const Str, allocator: Allocator) !Str {
-        return init(allocator, self.data);
+        var result = try init(allocator, self.data);
+        result.is_bytes = self.is_bytes;
+        return result;
     }
 
     pub fn deinit(self: *Str) void {
@@ -2009,6 +2291,9 @@ fn strHash(str: Str) u64 {
 pub fn typeName(value: anytype) Str {
     const T = @TypeOf(value);
     if (T == Str) {
+        if (value.is_bytes) {
+            return Str.init(std.heap.page_allocator, "bytes") catch unreachable;
+        }
         return Str.init(std.heap.page_allocator, "str") catch unreachable;
     } else if (T == i64) {
         return Str.init(std.heap.page_allocator, "int") catch unreachable;
@@ -2016,13 +2301,34 @@ pub fn typeName(value: anytype) Str {
         return Str.init(std.heap.page_allocator, "float") catch unreachable;
     } else if (T == bool) {
         return Str.init(std.heap.page_allocator, "bool") catch unreachable;
+    } else if (T == u8) {
+        // byte 类型：8 位无符号整数（0-255）
+        return Str.init(std.heap.page_allocator, "byte") catch unreachable;
+    } else if (T == []u8) {
+        // bytes 类型：原始字节切片（[]u8）
+        return Str.init(std.heap.page_allocator, "bytes") catch unreachable;
     } else if (T == std.Thread) {
         return Str.init(std.heap.page_allocator, "Thread") catch unreachable;
+    } else if (T == JsonValue) {
+        return switch (value) {
+            .str => Str.init(std.heap.page_allocator, "any:str") catch unreachable,
+            .int => Str.init(std.heap.page_allocator, "any:int") catch unreachable,
+            .float => Str.init(std.heap.page_allocator, "any:float") catch unreachable,
+            .bool => Str.init(std.heap.page_allocator, "any:bool") catch unreachable,
+            .null => Str.init(std.heap.page_allocator, "any:None") catch unreachable,
+            .list => Str.init(std.heap.page_allocator, "any:list") catch unreachable,
+            .dict => Str.init(std.heap.page_allocator, "any:dict") catch unreachable,
+        };
     } else {
-        // 使用 @typeName 获取类型的字符串表示
         const type_name = @typeName(T);
         if (std.mem.startsWith(u8, type_name, "std.Thread")) {
             return Str.init(std.heap.page_allocator, "Thread") catch unreachable;
+        }
+        if (std.mem.startsWith(u8, type_name, "runtime.runtime.Dict")) {
+            return Str.init(std.heap.page_allocator, "dict") catch unreachable;
+        }
+        if (std.mem.startsWith(u8, type_name, "runtime.runtime.List")) {
+            return Str.init(std.heap.page_allocator, "list") catch unreachable;
         }
         return Str.init(std.heap.page_allocator, "unknown") catch unreachable;
     }
@@ -2524,6 +2830,14 @@ pub fn jsonStringify(allocator: Allocator, obj: anytype) Str {
 
     const T = @TypeOf(obj.*);
 
+    // 如果传入的是 JsonValue 本身（不是 Dict/List），单独处理
+    if (T == JsonValue) {
+        jsonStringifyValue(allocator, &result, obj.*);
+        // 先复制，再让 defer 释放 result.items
+        const result_copy = allocator.dupe(u8, result.items) catch unreachable;
+        return Str{ .data = result_copy, .allocator = allocator, .owned = true };
+    }
+
     if (@hasField(T, "map")) {
         result.append('{') catch {};
         var it = obj.map.iterator();
@@ -2572,7 +2886,7 @@ pub fn jsonStringify(allocator: Allocator, obj: anytype) Str {
             // 检查是否是 JsonValue - 使用 @TypeOf 直接比较
             const ItemType = @TypeOf(item);
             if (ItemType == JsonValue) {
-                jsonStringifyValue(allocator, result, item);
+                jsonStringifyValue(allocator, &result, item);
             } else if (@typeInfo(ItemType) == .@"struct" and @hasField(ItemType, "map")) {
                 const nested = jsonStringify(allocator, &item);
                 result.appendSlice(nested.asSlice()) catch {};
@@ -2976,11 +3290,31 @@ pub const WebSocketClient = struct {
         return WebSocketClient{ .stream = stream, .allocator = allocator };
     }
 
-    pub fn send(self: *WebSocketClient, message: Str) !void {
-        const data = message.asSlice();
+    pub fn send(self: *WebSocketClient, message: anytype) !void {
+        // 编译期类型分派
+        const T = @TypeOf(message);
+        const data: []const u8 = blk: {
+            if (T == Str) {
+                break :blk message.asSlice();
+            } else if (T == []u8) {
+                break :blk message;
+            } else if (T == []const u8) {
+                break :blk message;
+            } else {
+                @compileError("WebSocket.send() expects Str, []u8, or []const u8, got " ++ @typeName(T));
+            }
+        };
+
+        // 自动判断 frame 类型：
+        //   - Str 始终是 text frame
+        //   - []u8 中如果所有字节都是可打印 ASCII（含 \t\n\r）→ text frame（自动转换）
+        //   - []u8 中含有控制字符或非 ASCII → binary frame
+        const is_text: bool = if (T == Str) true else isPrintableAscii(data);
+        const opcode: u8 = if (is_text) 0x81 else 0x82;
+
         var frame = std.ArrayList(u8).init(self.allocator);
         defer frame.deinit();
-        try frame.append(0x81);
+        try frame.append(opcode);
 
         var mask_key: [4]u8 = undefined;
         std.crypto.random.bytes(&mask_key);
@@ -3067,6 +3401,28 @@ pub const WebSocketClient = struct {
     }
 };
 
+// 判断字节切片是否全部为"可打印 ASCII"（含 \t \n \r 三个常用控制字符）
+// 用于 WebSocket.send() 自动判断 text/binary frame 类型
+fn isPrintableAscii(data: []const u8) bool {
+    for (data) |b| {
+        // 0x00-0x08, 0x0B, 0x0C, 0x0E-0x1F: 非可打印控制字符
+        if (b < 0x20) {
+            if (b != 0x09 and b != 0x0A and b != 0x0D) {
+                return false;
+            }
+        }
+        // 0x7F: DEL
+        if (b == 0x7F) {
+            return false;
+        }
+        // 0x80-0xFF: 非 ASCII（可能是 UTF-8 编码的 Unicode，但简化处理为非可打印）
+        if (b >= 0x80) {
+            return false;
+        }
+    }
+    return true;
+}
+
 // ============================ WebSocketClient 构造函数 ============================
 // 全局构造函数：websocket(url, headers)
 pub fn websocket(url: Str, headers: ?Dict(Str, Str)) *WebSocketClient {
@@ -3079,7 +3435,7 @@ pub fn wsConnect(url: Str, headers: ?Dict(Str, Str)) WebSocketClient {
     return WebSocketClient.connect(std.heap.page_allocator, url, headers) catch unreachable;
 }
 
-pub fn wsSend(client: WebSocketClient, message: Str) void {
+pub fn wsSend(client: WebSocketClient, message: anytype) void {
     var c = client;
     c.send(message) catch unreachable;
 }
@@ -3382,7 +3738,8 @@ pub const QueueItemType = enum(u8) {
     Undefined = 0, // 未设置类型（队列为空时）
     Int = 1,
     Float = 2,
-    Str = 3, // str 和 bytes 都用 Str 表示
+    Str = 3, // str
+    Bytes = 4, // bytes ([]u8) - 新增
 };
 
 // Queue 元素 - 支持多种类型
@@ -3391,6 +3748,8 @@ pub const QueueItem = struct {
     int_val: i64 = 0,
     float_val: f64 = 0,
     str_val: Str = undefined,
+    bytes_val: []u8 = &[_]u8{}, // bytes 专用（新增）
+    bytes_allocator: Allocator = std.heap.page_allocator, // bytes 内存管理器（新增）
 
     // 从 i64 创建
     pub fn fromInt(val: i64) QueueItem {
@@ -3408,7 +3767,7 @@ pub const QueueItem = struct {
         };
     }
 
-    // 从 Str 创建（str 和 bytes）
+    // 从 Str 创建（str）
     pub fn fromStr(val: Str) QueueItem {
         // 克隆字符串数据，因为原始数据可能来自栈内存或会被释放
         const new_str = Str{
@@ -3422,6 +3781,18 @@ pub const QueueItem = struct {
         };
     }
 
+    // 从 []u8 创建（bytes 类型专用，新增）
+    // 注意：使用 page_allocator 做临时存储，put_nowait 会用 queue.allocator 重新克隆
+    pub fn fromBytes(val: []u8) QueueItem {
+        // 临时复制数据，因为原始数据可能来自栈内存或会被释放
+        const copied = std.heap.page_allocator.dupe(u8, val) catch val;
+        return QueueItem{
+            .item_type = .Bytes,
+            .bytes_val = copied,
+            .bytes_allocator = std.heap.page_allocator,
+        };
+    }
+
     // 获取 int 值
     pub fn getInt(self: QueueItem) i64 {
         return self.int_val;
@@ -3430,6 +3801,19 @@ pub const QueueItem = struct {
     // 获取 float 值
     pub fn getFloat(self: QueueItem) f64 {
         return self.float_val;
+    }
+
+    // 获取 bytes 值 - 转移所有权（新增）
+    pub fn getBytes(self: QueueItem) []u8 {
+        if (self.item_type != .Bytes) {
+            return &[_]u8{};
+        }
+        // 转移所有权：将 item_type 设为 Undefined，让外部拥有数据
+        var mutable = self;
+        const data = mutable.bytes_val;
+        mutable.item_type = .Undefined;
+        mutable.bytes_val = &[_]u8{};
+        return data;
     }
 
     // 获取 str 值 - 按值接收，克隆数据后释放原始item
@@ -3464,10 +3848,16 @@ pub const QueueItem = struct {
         };
     }
 
-    // 释放资源（如果是 Str 类型，释放其内存）
+    // 释放资源（处理 Str 和 Bytes 的内存）
     pub fn deinit(self: *QueueItem) void {
         if (self.item_type == .Str) {
             self.str_val.deinit();
+            self.item_type = .Undefined;
+        } else if (self.item_type == .Bytes) {
+            if (self.bytes_val.len > 0) {
+                self.bytes_allocator.free(self.bytes_val);
+            }
+            self.bytes_val = &[_]u8{};
             self.item_type = .Undefined;
         }
     }
@@ -3519,6 +3909,10 @@ pub const Queue = struct {
         var item_copy = item;
         if (item.item_type == .Str) {
             item_copy.str_val = item.str_val.cloneWithAllocator(self.allocator) catch unreachable;
+        } else if (item.item_type == .Bytes) {
+            // 同样用 queue.allocator 重新克隆 bytes
+            item_copy.bytes_val = self.allocator.dupe(u8, item.bytes_val) catch unreachable;
+            item_copy.bytes_allocator = self.allocator;
         }
 
         self.items.append(item_copy) catch unreachable;
@@ -3538,14 +3932,21 @@ pub const Queue = struct {
         if (timeout_ms < 0) {
             while (true) {
                 self.mutex.lock();
+                // 类型不匹配时立即返回（与 put_nowait 行为一致）
                 if (self.item_type == .Undefined) {
                     self.item_type = item.item_type;
+                } else if (self.item_type != item.item_type) {
+                    self.mutex.unlock();
+                    return; // 类型不匹配，静默丢弃
                 }
                 if (self.item_type == item.item_type and (self.maxsize == 0 or self.items.items.len < self.maxsize)) {
-                    // 对于 Str 类型，需要克隆字符串以使用队列的 allocator
+                    // 对于 Str/Bytes 类型，需要克隆以使用队列的 allocator
                     var item_copy = item;
                     if (item.item_type == .Str) {
                         item_copy.str_val = item.str_val.cloneWithAllocator(self.allocator) catch unreachable;
+                    } else if (item.item_type == .Bytes) {
+                        item_copy.bytes_val = self.allocator.dupe(u8, item.bytes_val) catch unreachable;
+                        item_copy.bytes_allocator = self.allocator;
                     }
                     self.items.append(item_copy) catch unreachable;
                     self.unfinished_tasks += 1;
@@ -3561,14 +3962,21 @@ pub const Queue = struct {
         const end_time = std.time.nanoTimestamp() + (timeout_ms * std.time.ns_per_ms);
         while (std.time.nanoTimestamp() < end_time) {
             self.mutex.lock();
+            // 类型不匹配时立即返回（与 put_nowait 行为一致）
             if (self.item_type == .Undefined) {
                 self.item_type = item.item_type;
+            } else if (self.item_type != item.item_type) {
+                self.mutex.unlock();
+                return; // 类型不匹配，静默丢弃
             }
             if (self.item_type == item.item_type and (self.maxsize == 0 or self.items.items.len < self.maxsize)) {
-                // 对于 Str 类型，需要克隆字符串以使用队列的 allocator
+                // 对于 Str/Bytes 类型，需要克隆以使用队列的 allocator
                 var item_copy = item;
                 if (item.item_type == .Str) {
                     item_copy.str_val = item.str_val.cloneWithAllocator(self.allocator) catch unreachable;
+                } else if (item.item_type == .Bytes) {
+                    item_copy.bytes_val = self.allocator.dupe(u8, item.bytes_val) catch unreachable;
+                    item_copy.bytes_allocator = self.allocator;
                 }
                 self.items.append(item_copy) catch unreachable;
                 self.unfinished_tasks += 1;
@@ -4647,7 +5055,7 @@ pub const Config = struct {
     // 解析 INI 格式配置文件
     pub fn load(self: *Self, filename: []const u8) bool {
         const file = std.fs.cwd().openFile(filename, .{}) catch |err| {
-            printFileError(filename, err);
+            printFileError(filename, err, "Config.load");
             return false;
         };
         defer file.close();
@@ -4759,11 +5167,10 @@ pub fn newUDPSocket() *UDPSocket {
 
 // ============================ __cb_key_exists 辅助函数 ============================
 // 用于 in 运算符：检查 dict 中是否存在指定 key
-pub fn __cb_key_exists(jv: JsonValue, key: Str) bool {
-    return switch (jv) {
-        .dict => |d| d.contains(key),
-        else => false,
-    };
+// 使用 anytype 支持任意 dict 类型（Dict(Str, i64)、Dict(Str, JsonValue) 等）
+pub fn __cb_key_exists(dict: anytype, key: Str) bool {
+    // comptime 检查 dict 类型是否有 contains 方法
+    return @hasField(@TypeOf(dict), "map") and dict.contains(key);
 }
 
 // ============================ listContains 辅助函数 ============================

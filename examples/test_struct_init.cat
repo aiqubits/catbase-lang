@@ -1,0 +1,70 @@
+struct Point {
+    x: int
+    y: int
+
+    def __init__(self, x: int, y: int) {
+        self.x = x
+        self.y = y
+    }
+
+    # 另一个内置方法
+    def add(other: Point) -> Point {
+        return Point(self.x + other.x, self.y + other.y)
+    }
+
+    def copy_self() -> Point {
+        return Point(self.x, self.y)
+    }
+}
+
+# 复杂字段类型 + __init__
+struct Rect {
+    x: int
+    y: int
+    w: int
+    h: int
+
+    def __init__(self, x: int = 0, y: int = 0, w: int = 10, h: int = 10) {
+        self.x = x
+        self.y = y
+        self.w = w
+        self.h = h
+    }
+
+    def area() -> int {
+        return self.w * self.h
+    }
+}
+
+def main(args: list[str]) {
+    # 1. 基本调用：位置参数
+    p1: Point = Point(1, 2)
+    print("p1: (", p1.x, ", ", p1.y, ")\n")
+
+    # 2. 关键字参数
+    p2: Point = Point(x=3, y=4)
+    print("p2: (", p2.x, ", ", p2.y, ")\n")
+
+    # 3. 混合：位置 + 关键字
+    p3: Point = Point(5, y=6)
+    print("p3: (", p3.x, ", ", p3.y, ")\n")
+
+    # 4. 链式调用
+    s: Point = p1.add(p2)
+    print("p1 + p2: (", s.x, ", ", s.y, ")\n")
+
+    # 5. struct literal 与构造函数两种写法并存
+    p4: Point = Point { x: 7, y: 8 }
+    print("p4 (literal): (", p4.x, ", ", p4.y, ")\n")
+
+    # 6. 默认值
+    r1: Rect = Rect()
+    print("r1 (defaults): (", r1.x, ", ", r1.y, ", w=", r1.w, ", h=", r1.h, ")\n")
+
+    r2: Rect = Rect(x=1, y=2)
+    print("r2 (partial): (", r2.x, ", ", r2.y, ", w=", r2.w, ", h=", r2.h, ")\n")
+
+    r3: Rect = Rect(1, 2, 30, 40)
+    print("r3 (full): (", r3.x, ", ", r3.y, ", w=", r3.w, ", h=", r3.h, ")\n")
+    print("r3 area: ", r3.area(), "\n")
+}

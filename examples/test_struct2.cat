@@ -1,0 +1,50 @@
+struct SVector {
+    x: int
+    y: int
+
+    def __init__(self, x: int, y: int) {
+        self.x = x
+        self.y = y
+    }
+
+    def getx() -> int {
+        return self.x
+    }
+    def gety() -> int {
+        return self.y
+    }
+    def setx(x: int) {
+        self.x = x
+    }
+    def sety(y: int) {
+        self.y = y
+    }
+}
+
+def print_struct(sv: SVector) {
+    print(sv.x, sv.y)
+}
+
+def main(args: list[str]) {
+    # 1. __init__ 构造函数语法糖
+    a: SVector = SVector(1, 2)
+    print_struct(a)
+
+    # 2. 关键字参数
+    b: SVector = SVector(x=3, y=4)
+    print_struct(b)
+    xxx:int=b.x
+    print("xxx1 = ", xxx)
+    xxx=100000
+    print("b.x = ", b.x)
+    print("xxx2 = ", xxx)
+
+    # 3. struct literal 写法（与 __init__ 等价）
+    c: SVector = SVector { x: 5, y: 6 }
+    print_struct(c)
+
+    # 4. 验证两种写法产生的对象完全等价
+    a.setx(10)
+    a.sety(20)
+    print_struct(a)
+}

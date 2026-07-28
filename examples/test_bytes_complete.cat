@@ -1,0 +1,299 @@
+// CatBase bytes 类型完整测试
+// 验证：声明、分配、索引、转换、指针、内存管理、边界场景
+
+def main(args: list[str]) {
+    print("========================================\n")
+    print("  CatBase bytes 类型完整测试\n")
+    print("========================================\n\n")
+
+    # ============================================
+    # Part 1: bytes 基本声明和分配
+    # ============================================
+    print("--- Part 1: 声明与分配 ---\n")
+
+    # 小数据（静态池）
+    b1: bytes = bytes_alloc(64)
+    print("b1 = bytes_alloc(64) [小数据→静态池]\n")
+
+    # 中等数据
+    b2: bytes = bytes_alloc(1024)
+    print("b2 = bytes_alloc(1024) [中等数据→池/堆]\n")
+
+    # 大数据（堆）
+    b3: bytes = bytes_alloc(100000)
+    print("b3 = bytes_alloc(100000) [大数据→堆]\n")
+
+    # 零长度
+    b_empty: bytes = bytes_alloc(0)
+    print("b_empty = bytes_alloc(0) [空 bytes]\n")
+
+    # None 初始化
+    b_none: bytes = bytes(None)
+    print("b_none = bytes(None), len=", bytes_len(b_none), "\n")
+
+    print("\n")
+
+    # ============================================
+    # Part 2: 索引与赋值
+    # ============================================
+    print("--- Part 2: 索引与赋值 ---\n")
+
+    # 写入数据到 b1
+    b1[0] = byte(72)     # 'H'
+    b1[1] = byte(101)    # 'e'
+    b1[2] = byte(108)    # 'l'
+    b1[3] = byte(108)    # 'l'
+    b1[4] = byte(111)    # 'o'
+    b1[5] = byte(32)     # ' '
+    b1[6] = byte(87)     # 'W'
+    b1[7] = byte(111)    # 'o'
+    b1[8] = byte(114)    # 'r'
+    b1[9] = byte(108)    # 'l'
+    b1[10] = byte(100)   # 'd'
+    b1[11] = byte(33)    # '!'
+
+    print("b1 写入 'Hello World!':\n")
+    i: int = 0
+    while i < 12 {
+        v: byte = b1[i]
+        print("  b1[", i, "] = ", v, "\n")
+        i = i + 1
+    }
+
+    # 长度验证
+    print("\nbytes_len(b1) = ", bytes_len(b1), "\n")
+    if bytes_len(b1) == 64 {
+        print("  ✓ 长度正确\n")
+    } else {
+        print("  ✗ 长度错误 ERROR \n")
+    }
+
+    print("\n")
+
+    # ============================================
+    # Part 3: bytes ↔ str 互转
+    # ============================================
+    print("--- Part 3: str <-> bytes 互转 ---\n")
+
+    # str → bytes
+    s1: str = "CatBase"
+    b4: bytes = bytes(s1)
+    print("s1 = '", s1, "'\n")
+    print("b4 = bytes(s1)\n")
+    print("  b4[0] = ", b4[0], "\n")
+    print("  b4[3] = ", b4[3], "\n")
+    print("  bytes_len(b4) = ", bytes_len(b4), "\n")
+
+    # bytes → str
+    s2: str = str(b4)
+    print("s2 = str(b4) = '", s2, "'\n")
+    if s2 == "CatBase" {
+        print("  ✓ 转换正确\n")
+    } else {
+        print("  ✗ 转换错误 ERROR \n")
+    }
+
+    # 独立内存验证：修改 b4 不影响 s1
+    b4[0] = byte(88)     # 'X'
+    if s1 == "CatBase" {
+        print("  ✓ 独立内存（修改 b4 不影响 s1）\n")
+    } else {
+        print("  ✗ 内存未隔离（s1 = '", s1, "'） ERROR \n")
+    }
+
+    # 还原 b4
+    b4[0] = byte(67)     # 'C'
+
+    # None 转换
+    s3: str = str(None)
+    b5: bytes = bytes(None)
+    print("  str(None) = '", s3, "'\n")
+    print("  bytes_len(bytes(None)) = ", bytes_len(b5), "\n")
+
+    # 包含特殊字符
+    s4: str = "Hello, 世界!"
+    b6: bytes = bytes(s4)
+    s5: str = str(b6)
+    if s4 == s5 {
+        print("  ✓ Unicode 字符串转换正确\n")
+    } else {
+        print("  ✗ Unicode 转换错误 ERROR\n")
+    }
+
+    print("\n")
+
+    # ============================================
+    # Part 4: pointer_of 智能分派
+    # ============================================
+    print("--- Part 4: pointer_of 智能分派 ---\n")
+
+    # bytes 类型：返回数据指针
+    p1: Pointer = pointer_of(b1)
+    print("p1 = pointer_of(b1) [bytes → 数据指针]\n")
+    if !p1.is_null() {
+        print("  ✓ p1 非空\n")
+        # 通过 Pointer 读取
+        v1: byte = p1.get(byte)
+        print("  p1.get(byte) = ", v1, "\n")
+
+        # 通过 Pointer 写入
+        p1.set(byte, 90)  # 'Z'
+        print("  p1.set(byte, 90) 后:\n")
+        print("    b1[0] = ", b1[0], "\n")
+        if b1[0] == 90 {
+            print("  ✓ Pointer 写入成功\n")
+        } else {
+            print("  ✗ Pointer 写入失败 ERROR\n")
+        }
+    }
+
+    # int 类型：返回变量地址
+    n1: int = 42
+    p2: Pointer = pointer_of(n1)
+    print("\np2 = pointer_of(n1) [int → 变量地址]\n")
+    if !p2.is_null() {
+        v2: int = p2.get(int)
+        print("  p2.get(int) = ", v2, "\n")
+        p2.set(int, 100)
+        print("  p2.set(int, 100) 后:\n")
+        print("    n1 = ", n1, "\n")
+        if n1 == 100 {
+            print("  ✓ int 指针写入成功\n")
+        } else {
+            print("  ✗ int 指针写入失败 ERROR\n")
+        }
+    }
+
+    # float 类型
+    f1: float = 3.14
+    p3: Pointer = pointer_of(f1)
+    print("\np3 = pointer_of(f1) [float → 变量地址]\n")
+    if !p3.is_null() {
+        v3: float = p3.get(float)
+        print("  p3.get(float) = ", v3, "\n")
+    }
+
+    # bool 类型
+    bl1: bool = True
+    p4: Pointer = pointer_of(bl1)
+    print("\np4 = pointer_of(bl1) [bool → 变量地址]\n")
+    if !p4.is_null() {
+        v4: bool = p4.get(bool)
+        print("  p4.get(bool) = ", v4, "\n")
+    }
+
+    print("\n")
+
+    # ============================================
+    # Part 5: bytes 字符串构造和转换
+    # ============================================
+    print("--- Part 5: 与其他类型互转 ---\n")
+
+    # bytes 长度
+    print("bytes_len(b1) = ", bytes_len(b1), "\n")
+    print("bytes_len(b4) = ", bytes_len(b4), "\n")
+    print("bytes_len(b3) = ", bytes_len(b3), "\n")
+    print("bytes_len(b_empty) = ", bytes_len(b_empty), "\n")
+
+    # bytes 与 byte 转换
+    one_byte: byte = byte(65)
+    print("\nbyte(65) = ", one_byte, "\n")
+    print("ord('A') = 65\n")
+
+    print("\n")
+
+    # ============================================
+    # Part 6: 内存管理
+    # ============================================
+    print("--- Part 6: 内存管理 ---\n")
+
+    bytes_free(b1)
+    print("✓ bytes_free(b1)\n")
+    bytes_free(b2)
+    print("✓ bytes_free(b2)\n")
+    bytes_free(b3)
+    print("✓ bytes_free(b3)\n")
+    bytes_free(b4)
+    print("✓ bytes_free(b4)\n")
+    bytes_free(b6)
+    print("✓ bytes_free(b6)\n")
+    bytes_free(b_empty)
+    print("✓ bytes_free(b_empty)\n")
+    bytes_free(b5)
+    print("✓ bytes_free(b5)\n")
+
+    # 分配和释放循环（测试池回收）
+    print("\n--- 池回收测试 ---\n")
+    k: int = 0
+    while k < 5 {
+        tmp: bytes = bytes_alloc(100)
+        bytes_free(tmp)
+        k = k + 1
+    }
+    print("✓ 完成 5 次分配/释放循环\n")
+
+    # 大块分配
+    big: bytes = bytes_alloc(1000000)  # 1MB
+    print("✓ 分配 1MB: bytes_len(big) = ", bytes_len(big), "\n")
+    bytes_free(big)
+    print("✓ 释放 1MB\n")
+
+    print("\n")
+
+    # ============================================
+    # Part 7: 实际应用场景模拟
+    # ============================================
+    print("--- Part 7: 应用场景 ---\n")
+
+    # 场景 1：模拟图像数据
+    print("场景 1: 模拟图像数据（RGB 像素）\n")
+    image: bytes = bytes_alloc(1920 * 1080 * 3)  # 1080p RGB
+    print("  分配 1080p RGB: bytes_len = ", bytes_len(image), "\n")
+    # 模拟写入像素
+    image[0] = byte(255)   # R
+    image[1] = byte(128)   # G
+    image[2] = byte(64)    # B
+    print("  image[0..2] = ", image[0], ",", image[1], ",", image[2], "\n")
+    bytes_free(image)
+    print("  释放图像数据\n")
+
+    # 场景 2：模拟网络数据包
+    print("\n场景 2: 模拟网络数据包\n")
+    packet: bytes = bytes_alloc(1500)  # 以太网 MTU
+    print("  分配 1500 字节（以太网 MTU）\n")
+    # 模拟包头
+    packet[0] = byte(255)   # 目标 MAC 第 1 字节
+    packet[1] = byte(255)
+    packet[2] = byte(255)
+    packet[3] = byte(255)
+    packet[4] = byte(255)
+    packet[5] = byte(255)
+    print("  设置目标 MAC 前 6 字节: 255 255 255 255 255 255\n")
+    # 通过 Pointer 修改包
+    pkt_ptr: Pointer = pointer_of(packet)
+    pkt_ptr.set(byte, 170)
+    print("  Pointer.set(byte, 170) 后 packet[0] = ", packet[0], "\n")
+    bytes_free(packet)
+    print("  释放包数据\n")
+
+    # 场景 3：字符串编码转换验证
+    print("\n场景 3: 字符串往返转换\n")
+    texts: list[str] = ["hello", "world", "CatBase", "你好世界", "🦀 Rust"]
+    i = 0
+    while i < len(texts) {
+        original: str = texts[i]
+        encoded: bytes = bytes(original)
+        decoded: str = str(encoded)
+        if original == decoded {
+            print("  ✓ '", original, "' round-trip OK\n")
+        } else {
+            print("  ✗ '", original, "' round-trip FAILED ERROR\n")
+        }
+        bytes_free(encoded)
+        i = i + 1
+    }
+
+    print("\n========================================\n")
+    print("  所有测试完成！\n")
+    print("========================================\n")
+}

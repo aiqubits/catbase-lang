@@ -1,3 +1,8 @@
+value:int=0
+
+def setValue(v:int){
+	value=v
+}
 def add(a:int,b:int) -> int{
 	print("add()")
 	return a+b
@@ -34,7 +39,7 @@ def ftat(a:float=7,b:float=5) -> float{
 	print("ftat()")
 	return a*b
 }
-def xtat(a:int=7,b:int=5) -> str{
+def xtat(a:int=7,b:int=5) -> any{
 	print("xtat()")
 	o:int=0
 	o=a*b

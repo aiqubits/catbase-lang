@@ -1,0 +1,78 @@
+// Test: 单字符 bytes 字面量提升为 byte 类型（方案 C）
+def main(args: list[str]) {
+    print("=== 单字符 bytes 字面量提升为 byte 测试 ===\n\n")
+
+    # === 基础测试 ===
+    print("--- 基础测试 ---\n")
+    b1: byte = b"A"           # 应提升为 byte(65)
+    b2: byte = b"Z"           # byte(90)
+    b3: byte = b"0"           # byte(48)
+    b4: byte = b"\xFF"        # byte(255) - 转义
+
+    print("b\"A\"    = ", b1, " (期望 65 'A')\n")
+    print("b\"Z\"    = ", b2, " (期望 90 'Z')\n")
+    print("b\"0\"    = ", b3, " (期望 48 '0')\n")
+    print("b\"\\xFF\" = ", b4, " (期望 255)\n")
+
+    # === 类型检测 ===
+    print("\n--- 类型检测 ---\n")
+    print("type(b\"A\") = ", type(b"A"), " (期望 byte)\n")
+    print("type(b\"AB\") = ", type(b"AB"), " (期望 bytes)\n")
+    print("type(b\"hello\") = ", type(b"hello"), " (期望 bytes)\n")
+    print("type(b\"\") = ", type(b""), " (期望 bytes 空)\n")
+
+    # === 与 byte() 函数共存 ===
+    print("\n--- byte() 函数与 b\"X\" 字面量共存 ---\n")
+    b_func: byte = byte(65)    # 函数调用方式
+    b_lit: byte = b"A"         # 字面量方式（新增）
+    print("byte(65) = ", b_func, " (期望 65)\n")
+    print("b\"A\"    = ", b_lit, " (期望 65)\n")
+    if b_func == b_lit {
+        print("✓ byte(65) 和 b\"A\" 等价\n")
+    } else {
+        print("✗ 不等价\n")
+    }
+
+    # === 与 bytes 区分 ===
+    print("\n--- 单字符 vs 多字符 bytes ---\n")
+    b5: bytes = b"AB"          # 2 字符 = bytes
+    b6: byte = b"C"            # 1 字符 = byte
+
+    print("b\"AB\" length = ", bytes_len(b5), " (期望 2)\n")
+    print("b\"C\"  = ", b6, " (期望 67)\n")
+    print("type(b\"AB\") = ", type(b5), " (期望 bytes)\n")
+    print("type(b\"C\")  = ", type(b6), " (期望 byte)\n")
+
+    # === 在 FFI 场景使用 ===
+    print("\n--- FFI 场景使用 ---\n")
+    ascii_A: byte = b"A"       # 简洁的字节字面量
+    ascii_Z: byte = b"Z"
+    print("ASCII 'A' = ", ascii_A, "\n")
+    print("ASCII 'Z' = ", ascii_Z, "\n")
+
+    # === 在 bytes 数组中赋值 ===
+    print("\n--- 字节数组赋值 ---\n")
+    buf: bytes = bytes_alloc(5)
+    buf[0] = b"H"
+    buf[1] = b"e"
+    buf[2] = b"l"
+    buf[3] = b"l"
+    buf[4] = b"o"
+
+    # 验证
+    if buf[0] == 72 and buf[1] == 101 and buf[2] == 108 {
+        print("✓ buf 包含正确字节 (H=72, e=101, l=108)\n")
+    } else {
+        print("✗ buf 字节错误\n")
+    }
+    print("buf = ", buf[0], ",", buf[1], ",", buf[2], ",", buf[3], ",", buf[4], "\n")
+
+    bytes_free(buf)
+
+    # === 边界值测试 ===
+    print("\n--- 边界值测试 ---\n")
+    b_min: byte = b"\x00"      # 最小
+    b_max: byte = b"\xFF"      # 最大
+    print("b\"\\x00\" = ", b_min, " (期望 0)\n")
+    print("b\"\\xFF\" = ", b_max, " (期望 255)\n")
+}

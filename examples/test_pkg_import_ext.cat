@@ -1,0 +1,8 @@
+# test_pkg_import_ext.cat - 测试 import "apkg/test_pkg.catc"（带 .catc 后缀）
+import "apkg/test_pkg.catc" as tpl
+
+def main(args: list[str]) {
+    tpl.greet("CatBase")
+    result: int = tpl.add(10, 20)
+    print("10 + 20 = " + str(result))
+}

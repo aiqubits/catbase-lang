@@ -1,0 +1,518 @@
+# ===========================================================================
+# JSON 图数据管理器 - 简化版 (CatBase)
+# 策略: list[dict[str,any]] + json_dumps(list) 整体序列化 + 字符串拼接
+# ===========================================================================
+
+DATA_FILE: str = "./connect_node.json"
+
+def add_node(nid: int, label: str, desc: str, ntype: str) {
+    f: File = file(DATA_FILE, "r")
+    content: str = f.read()
+    f.close()
+    data: dict[str, any] = json_loads(content)
+    raw_nodes: list[any] = data["nodes"]
+    raw_links: list[any] = data["links"]
+    nodes: list[dict[str, any]] = []
+    links: list[dict[str, any]] = []
+    for i in range(0, len(raw_nodes)) {
+		nd: dict[str, any] = raw_nodes[i]
+		nodes.append(nd)
+	}
+    for i in range(0, len(raw_links)) {
+		raw_L:dict[str, any] = raw_links[i]
+        links.append(raw_L)
+    }
+
+    found: int = 0
+    for i in range(0, len(nodes)) {
+        if int(str(nodes[i].get("id", 0))) == nid {
+            found = 1
+        }
+    }
+    if found == 1 {
+        print("null")
+        return
+    }
+    new_node: dict[str, any] = {}
+    new_node["id"] = nid
+    new_node["label"] = label
+    new_node["desc"] = desc
+    new_node["type"] = ntype
+    nodes.append(new_node)
+
+    nodes_json: str = json_dumps(nodes)
+    links_json: str = json_dumps(links)
+    payload: str = "{\"nodes\":" + nodes_json + ",\"links\":" + links_json + "}"
+    while len(payload) < len(content) {
+        payload = payload + " "
+    }
+    f = file(DATA_FILE, "w")
+    f.write(payload)
+    f.close()
+    print(json_dumps(new_node))
+}
+
+
+def get_node(nid: int) ->str{
+    f: File = file(DATA_FILE, "r")
+    content: str = f.read()
+    f.close()
+	#print(nid)
+	return_str:str=""
+
+    data: dict[str, any] = json_loads(content)
+	#print(data)
+
+    raw_nodes: list[any] = data["nodes"]
+	#print(raw_nodes)
+
+    for i in range(0, len(raw_nodes)) {
+			xd:dict[str,any]=raw_nodes[i]
+			if int(str(xd.get("id", 0))) == nid {
+				return_str=json_dumps(xd)
+				#print(return_str)
+			}
+	}
+	return return_str
+}
+
+
+def add_link(src: int, tgt: int) ->str{
+    f: File = file(DATA_FILE, "r")
+    content: str = f.read()
+    f.close()
+    data: dict[str, any] = json_loads(content)
+    raw_nodes: list[any] = data["nodes"]
+    raw_links: list[any] = data["links"]
+    nodes: list[dict[str, any]] = []
+    links: list[dict[str, any]] = []
+    for i in range(0, len(raw_nodes)) {
+        nodes.append(raw_nodes[i])
+    }
+    for i in range(0, len(raw_links)) {
+        links.append(raw_links[i])
+    }
+
+    src_found: int = 0
+    tgt_found: int = 0
+    for i in range(0, len(nodes)) {
+        if int(str(nodes[i].get("id", 0))) == src {
+            src_found = 1
+        }
+        if int(str(nodes[i].get("id", 0))) == tgt {
+            tgt_found = 1
+        }
+    }
+    if src_found == 0 {
+        return "null"
+    }
+    if tgt_found == 0 {
+        return "null"
+    }
+    dup: int = 0
+    for i in range(0, len(links)) {
+        if int(str(links[i].get("source", 0))) == src {
+            if int(str(links[i].get("target", 0))) == tgt {
+                dup = 1
+            }
+        }
+    }
+    if dup == 1 {
+        return "已存在link"
+    }
+    new_link: dict[str, any] = {}
+    new_link["source"] = src
+    new_link["target"] = tgt
+    links.append(new_link)
+    nodes_json: str = json_dumps(nodes)
+    links_json: str = json_dumps(links)
+    payload: str = "{\"nodes\":" + nodes_json + ",\"links\":" + links_json + "}"
+    while len(payload) < len(content) {
+        payload = payload + " "
+    }
+    f = file(DATA_FILE, "w")
+    f.write(payload)
+    f.close()
+	return payload
+}
+
+#删除节点
+def delete_node(nid: int) ->str{
+    f: File = file(DATA_FILE, "r")
+    content: str = f.read()
+    f.close()
+    data: dict[str, any] = json_loads(content)
+    raw_nodes: list[any] = data["nodes"]
+    raw_links: list[any] = data["links"]
+    nodes: list[dict[str, any]] = []
+    links: list[dict[str, any]] = []
+    for i in range(0, len(raw_nodes)) {
+		raw_N:dict[str,any] = raw_nodes[i]
+        nodes.append(raw_N)
+    }
+    for i in range(0, len(raw_links)) {
+		raw_L:dict[str,any] = raw_links[i]
+        links.append(raw_L)
+    }
+
+    new_nodes: list[dict[str, any]] = []
+    found: int = 0
+    for i in range(0, len(nodes)) {
+		Nodes_i:dict[str, any] = nodes[i]
+        if int(str(Nodes_i.get("id", 0))) == nid {
+            found = 1
+        } else {
+            new_nodes.append(Nodes_i)
+        }
+    }
+    if found == 0 {
+        return "false"
+    }
+    new_links: list[dict[str, any]] = []
+    for i in range(0, len(links)) {
+		Links_i:dict[str,any] = links[i]
+        if int(str(Links_i.get("source", 0))) != nid {
+            if int(str(Links_i.get("target", 0))) != nid {
+                new_links.append(Links_i)
+            }
+        }
+    }
+    nodes_json: str = json_dumps(new_nodes)
+    links_json: str = json_dumps(new_links)
+    payload: str = "{\"nodes\":" + nodes_json + ",\"links\":" + links_json + "}"
+    while len(payload) < len(content) {
+        payload = payload + " "
+    }
+    f = file(DATA_FILE, "w")
+    f.write(payload)
+    f.close()
+	print(json_dumps({"deleted": nid}))
+    return "delete OK"
+}
+
+
+def delete_link(src: int, tgt: int) ->str{
+    f: File = file(DATA_FILE, "r")
+    content: str = f.read()
+    f.close()
+    data: dict[str, any] = json_loads(content)
+    raw_nodes: list[any] = data["nodes"]
+    raw_links: list[any] = data["links"]
+    nodes: list[dict[str, any]] = []
+    links: list[dict[str, any]] = []
+    for i in range(0, len(raw_nodes)) {
+		raw_N:dict[str,any] = raw_nodes[i]
+        nodes.append(raw_N)
+    }
+    for i in range(0, len(raw_links)) {
+		raw_L:dict[str,any] = raw_links[i]
+        links.append(raw_L)
+    }
+
+    new_links: list[dict[str, any]] = []
+    found: int = 0
+    for i in range(0, len(links)) {
+		Link_i:dict[str, any] = links[i]
+        if int(str(Link_i.get("source", 0))) == src {
+            if int(str(Link_i.get("target", 0))) == tgt {
+                found = 1
+            } else {
+                new_links.append(Link_i)
+            }
+        } else {
+            new_links.append(Link_i)
+        }
+    }
+    if found == 0 {
+        return "false"
+    }
+
+    nodes_json: str = json_dumps(nodes)
+    links_json: str = json_dumps(new_links)
+    payload: str = "{\"nodes\":" + nodes_json + ",\"links\":" + links_json + "}"
+    while len(payload) < len(content) {
+        payload = payload + " "
+    }
+    f = file(DATA_FILE, "w")
+    f.write(payload)
+    f.close()
+    print(json_dumps({"deleted_link": {"source": src, "target": tgt}}))
+	return "delete_link ok"
+}
+
+
+def update_node(nid: int, label: str, desc: str, ntype: str) ->str{
+    f: File = file(DATA_FILE, "r")
+    content: str = f.read()
+    f.close()
+    data: dict[str, any] = json_loads(content)
+	print("1")
+	print(content)
+	print(data)
+	print("1")
+    raw_nodes: list[any] = data["nodes"]
+    raw_links: list[any] = data["links"]
+    nodes: list[dict[str, any]] = []
+    links: list[dict[str, any]] = []
+    for i in range(0, len(raw_nodes)) {
+		raw_N:dict[str,any] = raw_nodes[i]
+        nodes.append(raw_N)
+    }
+    for i in range(0, len(raw_links)) {
+		raw_L:dict[str, any] = raw_links[i]
+        links.append(raw_L)
+    }
+
+    found: int = 0
+    for i in range(0, len(nodes)) {
+		node_i:dict[str,any] = nodes[i]
+        if int(str(node_i.get("id", 0))) == nid {
+            found = 1
+            if label != "" {
+                node_i["label"] = label
+            }
+            if desc != "" {
+                node_i["desc"] = desc
+            }
+            if ntype != "" {
+                node_i["type"] = ntype
+            }
+			nodes[i] = node_i
+        }
+    }
+    if found == 0 {
+        return "null"
+    }
+
+    nodes_json: str = json_dumps(nodes)
+    links_json: str = json_dumps(links)
+    payload: str = "{\"nodes\":" + nodes_json + ",\"links\":" + links_json + "}"
+    while len(payload) < len(content) {
+        payload = payload + " "
+    }
+    f = file(DATA_FILE, "w")
+    f.write(payload)
+    f.close()
+    print(json_dumps({"updated": nid}))
+	return payload
+}
+
+def search_nodes(keyword: str) ->str{
+    f: File = file(DATA_FILE, "r")
+    content: str = f.read()
+    f.close()
+    data: dict[str, any] = json_loads(content)
+    raw_nodes: list[any] = data["nodes"]
+    nodes: list[dict[str, any]] = []
+    for i in range(0, len(raw_nodes)) {
+		raw_N:dict[str, any] = raw_nodes[i]
+        nodes.append(raw_N)
+    }
+
+    kw: str = keyword.lower()
+    jj: int = 0
+    label: str = ""
+    found: int = 0
+    matches: list[dict[str, any]] = []
+
+    for idx in range(0, len(nodes)) {
+		Nodes_idx:dict[str, any] = nodes[idx]
+        label = str(Nodes_idx.get("label", "")).lower()
+        found = 0
+        jj = 0
+		if len(kw) <= len(label){
+			while jj <= len(label) - len(kw) {
+				if label[jj:jj+len(kw)] == kw {
+					found = 1
+					break
+					}
+					jj = jj + 1
+            }
+        }
+        if found == 1 {
+            matches.append(Nodes_idx)
+        }
+    }
+    print(json_dumps(matches))
+	return "search_node OK"
+}
+
+def get_neighbors(nid: int, direction: str) {
+    f: File = file(DATA_FILE, "r")
+    content: str = f.read()
+    f.close()
+    data: dict[str, any] = json_loads(content)
+    raw_nodes: list[any] = data["nodes"]
+    raw_links: list[any] = data["links"]
+    nodes: list[dict[str, any]] = []
+    links: list[dict[str, any]] = []
+
+    for i in range(0, len(raw_nodes)) {
+		nodes.append(raw_nodes[i])
+	}
+	for i in range(0, len(raw_links)) {
+		links.append(raw_links[i])
+	}
+    out_ids: list[int] = []
+    in_ids: list[int] = []
+    kk: int = 0
+    out_count: int = 0
+    in_count: int = 0
+    total_count: int = 0
+
+    for idx in range(0, len(links)) {
+        ln: dict[str, any] = links[idx]
+        s: int = int(str(ln.get("source", 0)))
+        t: int = int(str(ln.get("target", 0)))
+        if s == nid {
+            out_ids.append(t)
+        }
+        if t == nid {
+            in_ids.append(s)
+        }
+    }
+
+    node_found: int = 0
+    node_info: dict[str, any] = {}
+    for idx in range(0, len(nodes)) {
+        nd: dict[str, any] = nodes[idx]
+        if int(str(nd.get("id", 0))) == nid {
+            node_found = 1
+            node_info = nd
+        }
+    }
+    if node_found == 0 {
+        print("null")
+        return
+    }
+
+    out_nodes: list[dict[str, any]] = []
+    in_nodes: list[dict[str, any]] = []
+    for idx in range(0, len(nodes)) {
+        nd: dict[str, any] = nodes[idx]
+        for kk in range(0, len(out_ids)) {
+            if int(str(nd.get("id", 0))) == out_ids[kk] {
+                out_nodes.append(nd)
+                out_count = out_count + 1
+                total_count = total_count + 1
+            }
+        }
+        for kk in range(0, len(in_ids)) {
+            if int(str(nd.get("id", 0))) == in_ids[kk] {
+                in_nodes.append(nd)
+                in_count = in_count + 1
+                total_count = total_count + 1
+            }
+        }
+    }
+
+    all_nodes: list[dict[str, any]] = []
+    tid: int = 0
+    is_both: int = 0
+    is_out: int = 0
+    nd2: dict[str, any] = {}
+    for idx in range(0, len(out_ids)) {
+        tid = out_ids[idx]
+        is_both = 0
+        for kk in range(0, len(in_ids)) {
+            if in_ids[kk] == tid {
+                is_both = 1
+            }
+        }
+        for kk in range(0, len(nodes)) {
+            nd2 = nodes[kk]
+            if int(str(nd2.get("id", 0))) == tid {
+                nd2 = json_loads(json_dumps(nd2))
+                if is_both == 1 {
+                    nd2["_relation"] = "both"
+                } else {
+                    nd2["_relation"] = "out"
+                }
+                all_nodes.append(nd2)
+            }
+        }
+    }
+    for idx in range(0, len(in_ids)) {
+        tid = in_ids[idx]
+        is_out = 0
+        for kk in range(0, len(out_ids)) {
+            if out_ids[kk] == tid {
+                is_out = 1
+            }
+        }
+        if is_out == 0 {
+            for kk in range(0, len(nodes)) {
+                nd2 = nodes[kk]
+                if int(str(nd2.get("id", 0))) == tid {
+                    nd2 = json_loads(json_dumps(nd2))
+                    nd2["_relation"] = "in"
+                    all_nodes.append(nd2)
+                }
+            }
+        }
+    }
+
+    ret: dict[str, any] = {}
+    ret["node_id"] = nid
+    ret["node_info"] = node_info
+    ret["direction"] = direction
+    ret["out_nodes"] = out_nodes
+    ret["in_nodes"] = in_nodes
+    ret["all_nodes"] = all_nodes
+    ret["out_count"] = out_count
+    ret["in_count"] = in_count
+    ret["total_count"] = total_count
+    print(json_dumps(ret))
+}
+
+
+def main(args: list[str]) {
+    print("========================================\n")
+    print("  开始执行 API 调用示例 (CatBase)\n")
+    print("========================================\n\n")
+
+    #print("[步骤 1] 添加节点 100 (add_node)\n")
+    add_node(100, "示例节点", "这是示例描述", "demo2")
+    add_node(1, "模拟节点", "这是模拟描述", "demo1")
+    #print("\n\n")
+
+	print("[步骤 2] 查询节点 100 (get_node)\n")
+	retu_json_str:str=get_node(100)
+	print("return:",retu_json_str)
+
+	#retu_json_dict: dict[str, any] = json_loads(retu_json_str)
+	#print(retu_json_dict)
+	#print(retu_json_dict.get("desc"))
+	#print(type(retu_json_dict))
+
+    print("[步骤 3] 添加边 1 -> 100 (add_link)\n")
+    retu_new_link:str = add_link(1, 100)
+	print("return:",retu_new_link)
+
+    print("[步骤 4] 查询节点 100 的邻居 (get_neighbors, direction='both')\n")
+	get_neighbors(100, "both")
+
+    print("[步骤 5] 搜索关键词 '示例' (search_nodes)\n")
+    retu_search_nodes:str = search_nodes("示例")
+    print(retu_search_nodes)
+
+    print("[步骤 6] 更新节点 100 (update_node)\n")
+    retu_update_node:str=update_node(100, "新标签", "新描述", "updated")
+	print(retu_update_node)
+
+    print("[步骤 7] 再次查询节点 100 (get_node)\n")
+    retu_get_node:str = get_node(100)
+	print("return:",retu_get_node)
+
+    print("[步骤 8] 尝试删除边 1 -> 100 (delete_link)\n")
+    retu_delete_link:str = delete_link(1, 100)
+    print(retu_delete_link)
+
+    print("[步骤 9] 删除节点 100 (delete_node)\n")
+    retu_delete_node:str = delete_node(100)
+    print(retu_delete_node)
+
+    print("========================================\n")
+    print("  所有示例执行完毕\n")
+    print("========================================\n")
+}

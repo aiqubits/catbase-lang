@@ -1,0 +1,18 @@
+import "./import_state.cat" as st
+
+def main(args: list[str]) {
+    print("initial counter =", st.counter)
+    print("initial label =", st.label)
+    print("initial flag =", st.flag)
+
+    st.inc(5)
+    st.inc(7)
+    print("after inc: counter =", st.counter)
+    print("after inc: flag =", st.flag)
+    print("summary =", st.get_summary())
+
+    st.reset()
+    print("after reset: counter =", st.counter)
+    print("after reset: label =", st.label)
+    print("after reset: flag =", st.flag)
+}

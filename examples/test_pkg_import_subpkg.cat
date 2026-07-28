@@ -1,0 +1,15 @@
+# examples/test_pkg_import_mypkg.cat - 嵌套 import 测试（入口层）
+# 链路：examples/test_pkg_import_mypkg.cat
+#       → <base>/packages/apkg/sub_pkg2/sub_pkg_2.catc
+#           → <base>/packages/apkg/sub_pkg1/sub_pkg_1.catc
+#
+# 验证：当被 import 的 .catc 文件再去 import 另一个 packages/ 子目录下的 .catc 时，
+# 路径解析仍然能正确找到目标文件。
+
+import "apkg/sub_pkg2/sub_pkg_2" as mp
+
+def main(args: list[str]) {
+    print(mp.parent_greet("CatBase"))
+    doubled: int = mp.parent_double(21)
+    print("parent_double(21) = " + str(doubled))
+}

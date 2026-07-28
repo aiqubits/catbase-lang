@@ -1,0 +1,63 @@
+# 测试 dict 复杂情况
+# 覆盖：字面量 dict、复杂值（连接）、混合操作（[]= + .get）
+
+def test_literal_dict() {
+    print("=== Dict literal with multiple types ===\n")
+    config: dict[str, str] = {
+        "host": "localhost",
+        "port": "8080",
+        "user": "admin"
+    }
+    print("✓ Literal dict init OK\n")
+    print("host =", config.get("host"), "\n")
+}
+
+def test_complex_values() {
+    print("=== Dict with complex values (concat) ===\n")
+    prefix: str = "Bearer "
+    token: str = "abc123"
+    headers: dict[str, str] = {
+        "Auth": prefix + token,
+        "Type": "application/json"
+    }
+    print("✓ Dict with concat value OK\n")
+    print("Auth =", headers.get("Auth"), "\n")
+}
+
+def test_mixed_operations() {
+    print("=== Dict with []= then .get ===\n")
+    data: dict[str, int] = {}
+    data["count"] = 100
+    data["total"] = 200
+    val: int = data.get("count")
+    print("count =", val, "\n")
+    print("✓ Mixed operations OK\n")
+}
+
+def test_int_values() {
+    print("=== Dict with int literal values ===\n")
+    counters: dict[str, int] = {
+        "requests": 100,
+        "errors": 5,
+        "success": 95
+    }
+    print("requests =", counters.get("requests"), "\n")
+    print("✓ Int literal values OK\n")
+}
+
+def test_empty_dict_only() {
+    print("=== Empty dict only (no subsequent assign) ===\n")
+    empty: dict[str, str] = {}
+    print("len =", len(empty), "\n")
+    print("✓ Empty dict OK\n")
+}
+
+def main(args: list[str]) {
+    test_empty_dict_only()
+    test_literal_dict()
+    test_complex_values()
+    test_mixed_operations()
+    test_int_values()
+
+    print("=== All complex dict tests passed ===\n")
+}

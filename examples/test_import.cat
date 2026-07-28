@@ -1,9 +1,8 @@
-import "./import_mat.cat" as addcat
-
+import "./import_mat.cat" as addcat1
+import "./import_mat.cat" as addcat2
 def main(args:list[str]) {
-    int_list: list[int] = [1, 2, 3]
-    print(int_list)
-    
-    d: dict[str, int] = {"a": 1, "b": 2}
-    print(d)
+    addcat1.setValue(100)
+    print(addcat1.value)
+    addcat2.setValue(200)
+    print(addcat2.value)
 }

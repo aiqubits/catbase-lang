@@ -1,0 +1,42 @@
+DATA_FILE: str = "./connect_node.json"
+
+def get_node(nid: int) ->str{
+    f: File = file(DATA_FILE, "r")
+    content: str = f.read()
+    f.close()
+	print(nid)
+	return_str:str=""
+
+    data: dict[str, any] = json_loads(content)
+	#print(data)
+
+    raw_nodes: list[any] = data["nodes"]
+	#print(raw_nodes)
+
+    for i in range(0, len(raw_nodes)) {
+			#xd:dict[str,any]=raw_nodes[i]
+            print("p1:",raw_nodes[i])
+			print("p2:",raw_nodes[i].get("id", 0))
+			
+			if int(str(raw_nodes[i].get("id", 0))) == nid {
+				#if int(str(xd.get("id", 0))) == nid {
+				return_str=json_dumps(raw_nodes[i])
+				print("json_dumps:",return_str)
+			}
+            else{
+                print("no")
+            }
+	}
+	return return_str
+}
+
+def main(args: list[str]){
+	print("[步骤 2] 查询节点 100 (get_node)\n")
+	retu_json_str:str=get_node(100)
+	print("return:",retu_json_str)
+
+	retu_json_dict: dict[str, any] = json_loads(retu_json_str)
+	print(retu_json_dict)
+	print(retu_json_dict.get("desc"))
+	print(type(retu_json_dict))
+}

@@ -1,0 +1,7 @@
+# test_pkg_prefix_ext.cat - 测试 import "apkg/sub_pkg/local_helper.catc"（带 apkg/sub_pkg/ 前缀和 .catc 后缀）
+import "apkg/sub_pkg1/sub_pkg_1" as lh
+
+def main(args: list[str]) {
+    result: str=lh.local_msg()
+    print("local_msg: " + result) 
+}

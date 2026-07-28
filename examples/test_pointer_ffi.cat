@@ -1,0 +1,39 @@
+# test_pointer_ffi.cat
+# 阶段 1-3 验证：Pointer 自动解包 + 类型化指针
+
+import "/usr/lib/x86_64-linux-gnu/libc.so" as libc
+from libc import strlen(s: Pointer) -> int
+from libc import strcpy(dst: Pointer, src: Pointer) -> Pointer
+from libc import abs(x: int) -> int
+
+def main(args: list[str]) {
+    # 测试 1: str 转 cstr（最常用的场景：把 CatBase str 当作 C 字符串传给 libc）
+    greeting: str = "hello world"
+    c_str: Pointer = str_as_cstr(greeting)
+    n: int = libc.strlen(c_str)
+    print("strlen via cstr =", n)
+
+    # 测试 2: 标量 FFI（回归）
+    a: int = abs(-100)
+    print("abs(-100) =", a)
+
+    # 测试 3: bytes 转 int16 类型化指针
+    pcm: bytes = bytes("000011112222")  # 12 字节 = 6 个 int16
+    pcm_i16: Pointer = bytes_as_int16_ptr(pcm)
+    print("pcm_i16 elem_size =", pcm_i16.elem_size)
+    print("pcm_i16 elem_count =", pcm_i16.elem_count)
+    print("pcm_i16 elem_type =", pcm_i16.elem_type)
+
+    # 测试 4: int 转 int32 类型化指针
+    err_code: int = 42
+    err_ptr: Pointer = int32_ptr(err_code)
+    print("err_ptr elem_size =", err_ptr.elem_size)
+    print("err_ptr elem_count =", err_ptr.elem_count)
+    print("err_ptr elem_type =", err_ptr.elem_type)
+
+    # 测试 5: bytes 转 u8 指针，按字节解释
+    pcm2: bytes = bytes("12345678")  # 8 字节
+    pcm2_ptr: Pointer = bytes_as_uint8_ptr(pcm2)
+    n3: int = libc.strlen(pcm2_ptr)
+    print("strlen of pcm2 (typed u8) =", n3)
+}

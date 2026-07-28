@@ -1,0 +1,22 @@
+def main(args: list[str]) {
+    # Test 1: chr() 把 int 转成 str
+    a: str = chr(65)
+    print("chr(65) = ", a, "\n")
+
+    # Test 2: chr() 把 byte 转成 str
+    b: byte = byte(90)
+    c: str = chr(b)
+    print("chr(byte(90)) = ", c, "\n")
+
+    # Test 3: str(int) - 数值转字符串
+    d: str = str(65)
+    print("str(65) = ", d, "\n")
+
+    # Test 4: str(byte) - 字节转字符串
+    e: str = str(b)
+    print("str(byte(90)) = ", e, "\n")
+
+    # Test 5: ord() 把 str 转成 int
+    f: int = ord("Z")
+    print("ord('Z') = ", f, "\n")
+}

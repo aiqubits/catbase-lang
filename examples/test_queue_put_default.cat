@@ -1,0 +1,47 @@
+# 测试 Queue.put() 默认参数
+# 验证: q.put(data) 等价于 q.put(data, -1)
+
+def test_put_single_arg() {
+    print("=== Test 1: put with single arg ===\n")
+    q: Queue = queue(10)
+    q.put("hello")         # ✅ 默认 timeout = -1（无限等待）
+    print("✓ put(data) with default timeout OK\n")
+    print("queue size:", q.qsize(), "\n")
+}
+
+def test_put_two_args() {
+    print("=== Test 2: put with two args ===\n")
+    q: Queue = queue(10)
+    q.put("hello", -1)     # 显式无限等待
+    q.put("world", 0)      # 非阻塞
+    q.put("foo", 100)      # 100ms 超时
+    print("✓ put(data, timeout) variants OK\n")
+}
+
+def test_put_bytes_default() {
+    print("=== Test 3: put bytes with default ===\n")
+    q: Queue = queue(10)
+    q.put(b"\x00\xFF")    # ✅ bytes 单参数也支持
+    print("✓ put(bytes) with default timeout OK\n")
+}
+
+def test_mixed_puts() {
+    print("=== Test 4: mixed puts ===\n")
+    q: Queue = queue(10)
+    q.put("str1")
+    q.put(b"bytes1")
+    q.put(42)
+    q.put(3.14)
+    q.put(True)
+    print("✓ Mixed types with default timeout OK\n")
+    print("queue size:", q.qsize(), "\n")
+}
+
+def main(args: list[str]) {
+    test_put_single_arg()
+    test_put_two_args()
+    test_put_bytes_default()
+    test_mixed_puts()
+
+    print("=== All Queue.put default arg tests passed ===\n")
+}

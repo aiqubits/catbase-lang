@@ -1,0 +1,6 @@
+# examples/test_pkg_local.cat - 测试 import "./xxx"（./ 前缀 → 源文件目录，.catc 后缀可省略）
+import "./test_pkg_local" as tpl
+
+def main(args: list[str]) {
+    tpl.local_msg()
+}

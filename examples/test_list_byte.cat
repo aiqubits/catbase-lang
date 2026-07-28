@@ -1,0 +1,33 @@
+def main(args: list[str]) {
+    print("--- list[byte] test ---\n")
+
+    # 1. Create list[byte]
+    buf: list[byte] = [byte(65), byte(66), byte(67)]
+    print("  length: ", len(buf), "\n")
+    print("  buf[0] = ", buf[0], "\n")
+    print("  buf[1] = ", buf[1], "\n")
+    print("  buf[2] = ", buf[2], "\n")
+
+    # 2. Modify element
+    buf[1] = byte(90)
+    print("  after set buf[1] = ", buf[1], "\n")
+
+    # 3. Append element
+    buf.append(byte(100))
+    print("  length after append: ", len(buf), "\n")
+    print("  buf[3] = ", buf[3], "\n")
+
+    # 4. Access via Pointer
+    val_byte: byte = buf[0]
+    ptr: Pointer = pointer_of(val_byte)
+    val: int = ptr.get(byte)
+    print("  ptr.get(byte) = ", val, "\n")
+    ptr.set(byte, 77)
+    print("  after ptr.set(byte,77) buf[0] = ", buf[0], "\n")
+
+    # 5. Key insight
+    print("\n--- key findings ---\n")
+    print("  list[byte] length: ", len(buf), "\n")
+    print("  cannot get internal array pointer (no data() function)\n")
+    print("  cannot use as FFI buffer for opus_encode()\n")
+}

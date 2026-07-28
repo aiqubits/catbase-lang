@@ -1,0 +1,65 @@
+# 测试 dict 的值类型分派
+# 修复: dict[str, str] 现在正确使用 Str 而非 JsonValue
+
+def test_dict_str() {
+    print("=== dict[str, str] test ===\n")
+
+    headers: dict[str, str] = {}
+
+    # 字符串字面量赋值
+    headers["Authorization"] = "Bearer token123"
+    headers["Protocol-Version"] = "1"
+    headers["Device-Id"] = "device-001"
+    print("✓ String literal assignments OK\n")
+
+    # 字符串连接
+    prefix: str = "Bearer "
+    token: str = "my_token_456"
+    headers["Auth-Combined"] = prefix + token
+    print("✓ String concat assignment OK\n")
+
+    print("dict[str, str] test passed\n")
+}
+
+def test_dict_int() {
+    print("=== dict[str, int] test ===\n")
+
+    counters: dict[str, int] = {}
+    counters["requests"] = 100
+    counters["errors"] = 5
+    counters["success"] = 95
+    print("✓ int assignments OK\n")
+
+    print("dict[str, int] test passed\n")
+}
+
+def test_dict_float() {
+    print("=== dict[str, float] test ===\n")
+
+    metrics: dict[str, float] = {}
+    metrics["latency"] = 0.123
+    metrics["throughput"] = 99.5
+    print("✓ float assignments OK\n")
+
+    print("dict[str, float] test passed\n")
+}
+
+def test_dict_bool() {
+    print("=== dict[str, bool] test ===\n")
+
+    flags: dict[str, bool] = {}
+    flags["enabled"] = True
+    flags["debug"] = False
+    print("✓ bool assignments OK\n")
+
+    print("dict[str, bool] test passed\n")
+}
+
+def main(args: list[str]) {
+    test_dict_str()
+    test_dict_int()
+    test_dict_float()
+    test_dict_bool()
+
+    print("=== All dict V type tests passed ===\n")
+}

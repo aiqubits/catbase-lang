@@ -1,34 +1,205 @@
-def main(args:list[str]) {
-    x:dict[str,str] = {"key": "value"}
-    print("x (dict) =", x, ", type =", type(x))
-    if type(x)!="dict"{
-        print("ERROR")
-    }
-    y:list[str] = ["key","value"]
-    print("y (list) =", y, ", type =", type(y))
-    if type(y)!="list"{
-        print("ERROR")
-    }
-    z:int = 0
-    print("z (int) =", z, ", type =", type(z))
-    if type(z)!="int"{
-        print("ERROR")
-    }
-    e:float = 0
-    print("e (float) =", e, ", type =", type(e))
-    if type(e)!="float"{
-        print("ERROR")
-    }
-    f:bool = True
-    print("f (bool) =", f, ", type =", type(f))
-    if type(f)!="bool"{
-        print("ERROR")
-    }
-    msg: str = "Hello, Serial!"
-    msg_bytes: bytes = bytes(msg)
+// Test: type() 函数对 byte 和 bytes 的检测
+// 包含所有最新 byte 创建方式：构造函数、单字符字面量、bytes 索引
+def main(args: list[str]) {
+    print("=== type() 函数检测测试 ===\n\n")
 
-    print("msg_bytes (bytes) =", msg_bytes, ", type =", type(msg_bytes))
-    if type(msg_bytes)!="bytes"{
-        print("ERROR")
+    # 基本类型
+    n: int = 42
+    f: float = 3.14
+    b: bool = True
+    s: str = "hello"
+    bl: list[int] = [1, 2, 3]
+    d: dict[str, int] = {"a": 1}
+
+    print("int:    type = ", type(n), "\n")
+    print("float:  type = ", type(f), "\n")
+    print("bool:   type = ", type(b), "\n")
+    print("str:    type = ", type(s), "\n")
+    print("list:   type = ", type(bl), "\n")
+    print("dict:   type = ", type(d), "\n\n")
+
+    # ============================================
+    # 全面 byte 类型 type() 测试
+    # ============================================
+    print("=== byte 类型 type() 全面测试 ===\n")
+
+    # ============================================
+    # 方式 1：byte() 构造函数（保留）
+    # ============================================
+    print("--- 方式 1：byte() 构造函数 ---\n")
+    b_ctor: byte = byte(65)
+    code_of_Z: int = ord("Z")
+    b_from_ord: byte = byte(code_of_Z)
+    print("byte(65)       = ", b_ctor, " type = ", type(b_ctor), " ('A')\n")
+    print("byte(0)        type = ", type(byte(0)), "\n")
+    print("byte(127)      type = ", type(byte(127)), "\n")
+    print("byte(255)      type = ", type(byte(255)), "\n")
+    print("byte(ord('Z')) type = ", type(b_from_ord), " ('Z')\n\n")
+
+    # ============================================
+    # 方式 2：单字符 bytes 字面量（方案 C - 新增）
+    # ============================================
+    print("--- 方式 2：单字符 bytes 字面量 b\"X\" ---\n")
+    b_lit_A: byte = b"A"            # ASCII 65
+    b_lit_Z: byte = b"Z"            # ASCII 90
+    b_lit_0: byte = b"0"            # ASCII 48
+    b_lit_FF: byte = b"\xFF"        # 转义 = 255
+    b_lit_nul: byte = b"\x00"       # 转义 = 0
+
+    print("b\"A\"      = ", b_lit_A, " type = ", type(b_lit_A), " ('A')\n")
+    print("b\"Z\"      = ", b_lit_Z, " type = ", type(b_lit_Z), " ('Z')\n")
+    print("b\"0\"      = ", b_lit_0, " type = ", type(b_lit_0), " ('0')\n")
+    print("b\"\\xFF\"   = ", b_lit_FF, " type = ", type(b_lit_FF), "\n")
+    print("b\"\\x00\"   = ", b_lit_nul, " type = ", type(b_lit_nul), "\n")
+    print("type(b\"A\")     = ", type(b"A"), " (期望 byte)\n")
+    print("type(b\"\\xFF\")  = ", type(b"\xFF"), " (期望 byte)\n\n")
+
+    # ============================================
+    # 方式 3：bytes 索引（已有）
+    # ============================================
+    print("--- 方式 3：bytes 索引 ---\n")
+    data: bytes = b"Hello"
+    b_idx0: byte = data[0]          # 'H' = 72
+    b_idx1: byte = data[1]          # 'e' = 101
+    b_idx4: byte = data[4]          # 'o' = 111
+
+    print("b\"Hello\"[0] = ", b_idx0, " type = ", type(b_idx0), " ('H')\n")
+    print("b\"Hello\"[1] = ", b_idx1, " type = ", type(b_idx1), " ('e')\n")
+    print("b\"Hello\"[4] = ", b_idx4, " type = ", type(b_idx4), " ('o')\n\n")
+
+    # ============================================
+    # 三种方式等价性验证
+    # ============================================
+    print("--- 三种方式等价性 ---\n")
+    b_method1: byte = byte(65)      # 构造函数
+    b_method2: byte = b"A"           # 单字符字面量
+    b_method3: byte = byte(72 - 7)   # 索引值（72-7=65）
+
+    print("byte(65)        = ", b_method1, "\n")
+    print("b\"A\"           = ", b_method2, "\n")
+    print("byte(72-7)      = ", b_method3, "\n")
+    print("data[0] (index) = ", b_idx0, " (来自 bytes 索引)\n")
+
+    if b_method1 == b_method2 && b_method2 == b_method3 {
+        print("✓ 三种方式都产生相同的 byte 值\n\n")
+    } else {
+        print("✗ 三种方式结果不一致\n\n")
     }
+
+    # ============================================
+    # bytes 与单字符 byte 区分
+    # ============================================
+    print("--- bytes vs 单字符 byte 区分 ---\n")
+    bs_multi: bytes = b"AB"         # 2 字符 = bytes
+    bs_single: byte = b"C"          # 1 字符 = byte
+
+    print("b\"AB\" type = ", type(bs_multi), " length = ", bytes_len(bs_multi), "\n")
+    print("b\"C\"  type = ", type(bs_single), " value = ", bs_single, "\n")
+
+    if type(bs_multi) == "bytes" && type(bs_single) == "byte" {
+        print("✓ 单字符自动提升为 byte，多字符保持 bytes\n\n")
+    } else {
+        print("✗ 类型提升错误\n\n")
+    }
+
+    # ============================================
+    # bytes 类型（多种创建方式）
+    # ============================================
+    print("--- bytes 类型（多种创建方式） ---\n")
+    bts: bytes = bytes_alloc(64)
+    bts2: bytes = b"hello"
+
+    print("bytes_alloc(64) type = ", type(bts), "\n")
+    print("b\"hello\"        type = ", type(bts2), "\n\n")
+
+    # ============================================
+    # str vs bytes 区分
+    # ============================================
+    print("=== str vs bytes 区分 ===\n")
+    s2: str = "abc"
+    bs: bytes = b"abc"
+    print("str  type = ", type(s2), "\n")
+    print("bytes type = ", type(bs), "\n")
+    if type(s2) != type(bs) {
+        print("✓ 区分正确（str != bytes）\n")
+    } else {
+        print("✗ 错误：str 和 bytes 类型相同\n")
+    }
+
+    # ============================================
+    # 字面量类型判断
+    # ============================================
+    print("\n=== 字面量类型 ===\n")
+    print("type(65) = ", type(65), "\n")
+    print("type(3.14) = ", type(3.14), "\n")
+    print("type(True) = ", type(True), "\n")
+    print("type('hello') = ", type("hello"), "\n")
+    print("type(b'hello') = ", type(b"hello"), "\n")
+    print("type(b'A') = ", type(b"A"), " (单字符字面量 - byte)\n")
+    print("type(b'\\xFF') = ", type(b"\xFF"), " (转义单字符 - byte)\n")
+    print("type([1,2,3]) = ", type([1, 2, 3]), "\n")
+    print("type('a') = ", type('a'), "\n")
+    print("type(byte(65)) = ", type(byte(65)), "\n")
+
+    # ============================================
+    # byte 在容器中
+    # ============================================
+    print("\n=== byte 在容器中 ===\n")
+    byte_list1: list[byte] = [byte(1), byte(2), byte(3)]
+    byte_list2: list[byte] = [b"\x01", b"\x02", b"\x03"]    # 字面量方式
+    first_byte1: byte = byte_list1[0]
+    first_byte2: byte = byte_list2[0]
+
+    print("list[byte(1),byte(2),byte(3)][0] type = ", type(first_byte1), "\n")
+    print("list[b\"\\x01\",...]              type = ", type(first_byte2), "\n")
+
+    # ============================================
+    # 字节数组赋值
+    # ============================================
+    print("\n=== 字节数组赋值（新字面量方式） ===\n")
+    buf: bytes = bytes_alloc(5)
+    buf[0] = b"H"
+    buf[1] = b"e"
+    buf[2] = b"l"
+    buf[3] = b"l"
+    buf[4] = b"o"
+
+    if buf[0] == 72 and buf[1] == 101 and buf[2] == 108 and buf[3] == 108 and buf[4] == 111 {
+        print("✓ buf 字节正确：H=72, e=101, l=108, l=108, o=111\n")
+    } else {
+        print("✗ buf 字节错误\n")
+    }
+
+    # ============================================
+    # byte 用于 chr/ord 转换
+    # ============================================
+    print("\n=== byte 用于 chr/ord 转换 ===\n")
+    c_from_byte: str = chr(b"Z")
+    n_from_chr: int = ord(chr(b"M"))
+    code_of_x: int = ord("X")
+    b_from_chr: byte = byte(code_of_x)
+    b_lit_to_chr: str = chr(byte(255 - 165))    # 255-165=90 -> "Z"
+
+    print("chr(b\"Z\")            = '", c_from_byte, "' type = ", type(c_from_byte), "\n")
+    print("ord(chr(b\"M\"))        = ", n_from_chr, " type = ", type(n_from_chr), "\n")
+    print("byte(ord('X'))        = ", b_from_chr, " type = ", type(b_from_chr), " ('X')\n")
+    print("chr(byte(255-165))    = '", b_lit_to_chr, "' type = ", type(b_lit_to_chr), "\n")
+
+    # ============================================
+    # int vs byte 区分
+    # ============================================
+    print("\n=== int vs byte 区分 ===\n")
+    i_val: int = 65
+    b_val: byte = b"A"
+    print("int  65  type = ", type(i_val), "\n")
+    print("byte b\"A\" type = ", type(b_val), "\n")
+    if type(i_val) != type(b_val) {
+        print("✓ int 和 byte 类型明确区分\n")
+    } else {
+        print("✗ int 和 byte 类型相同（错误）\n")
+    }
+
+    # 清理
+    bytes_free(bts)
+    bytes_free(buf)
 }

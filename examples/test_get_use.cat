@@ -1,0 +1,60 @@
+# get_use.cat - 通过 import 调用 test_simple_json_manager.cat
+import "./test_simple_json_manager.cat" as gm
+
+def main(args: list[str]) {
+    fp: str = "./connect_node.json"
+
+    # 从 JSON 文件读取命令（绕过 CatBase args 的 runtime.Str 类型问题）
+    cmd_file: File = file("/tmp/douzi_cmd.json", "r")
+    cmd_content: str = cmd_file.read()
+    cmd_file.close()
+
+    if cmd_content == "" {
+        print("无命令，请在 shell 中使用 douzi-graph 脚本")
+        return
+    }
+
+    raw: dict[str, any] = json_loads(cmd_content)
+    cmd: str = str(raw["cmd"])
+
+    if cmd == "add_node" {
+        gm.add_node(fp, int(str(raw["id"])), str(raw["label"]), str(raw["desc"]), str(raw["type"]))
+        return
+    }
+    if cmd == "get_node" {
+        gm.get_node(fp, int(str(raw["id"])))
+        return
+    }
+    if cmd == "add_link" {
+        gm.add_link(fp, int(str(raw["src"])), int(str(raw["tgt"])))
+        return
+    }
+    if cmd == "del_node" {
+        gm.delete_node(fp, int(str(raw["id"])))
+        return
+    }
+    if cmd == "del_link" {
+        gm.delete_link(fp, int(str(raw["src"])), int(str(raw["tgt"])))
+        return
+    }
+    if cmd == "update_node" {
+        gm.update_node(fp, int(str(raw["id"])), str(raw["label"]), str(raw["desc"]), str(raw["type"]))
+        return
+    }
+    if cmd == "neighbors" {
+        dir_val: str = "both"
+        try {
+            dir_val = str(raw["direction"])
+        }
+        except {
+            dir_val = "both"
+        }
+        gm.get_neighbors(fp, int(str(raw["id"])), dir_val)
+        return
+    }
+    if cmd == "search" {
+        gm.search_nodes(fp, str(raw["keyword"]))
+        return
+    }
+    print("未知命令: " + cmd)
+}

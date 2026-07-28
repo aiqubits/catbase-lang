@@ -1,0 +1,49 @@
+// CatBase class 关键字示例
+// 演示：class 是 struct 的完全等价语法糖
+// 用途：降低从 Python/Java/JS 转过来的用户的学习门槛
+
+class Point {
+    x: int
+    y: int
+
+    def __init__(self, x: int, y: int) {
+        self.x = x
+        self.y = y
+    }
+
+    def getx() -> int {
+        return self.x
+    }
+    def gety() -> int {
+        return self.y
+    }
+    def setx(x: int) {
+        self.x = x
+    }
+    def sety(y: int) {
+        self.y = y
+    }
+}
+
+def print_point(p: Point) {
+    print(p.x, p.y)
+}
+
+def main(args: list[str]) {
+    # 1. 用 __init__ 构造
+    a: Point = Point(1, 2)
+    print_point(a)
+
+    # 2. 关键字参数
+    b: Point = Point(x=3, y=4)
+    print_point(b)
+
+    # 3. struct 字面量写法（与 __init__ 等价）
+    c: Point = Point { x: 5, y: 6 }
+    print_point(c)
+
+    # 4. 方法调用
+    a.setx(10)
+    a.sety(20)
+    print_point(a)
+}

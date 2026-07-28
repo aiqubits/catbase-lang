@@ -4,27 +4,28 @@
 # python ./websock_server.py
 #
 
-
 def main(args:list[str]) {
     url: str = "ws://127.0.0.1:28080"
-    headers: dict[str,str] = 
+    headers: dict[str,str] =
     {
-         "Authorization": "Bearer test_token", 
+         "Authorization": "Bearer test_token",
          "Device-Id": "device123"
     }
     client: WebSocket = websocket(url, headers)
     print("Connected to WebSocket server\n")
-    
-    # 发送字符串需要先转换为 bytes
-    client.send(bytes("Hello from CatBase!"))
-    print("Sent: Hello from CatBase!\n")
-    
-    # 接收到的 bytes 需要转换为 str 才能打印
-    response:bytes = client.recv()
-    print("Received: ")
-    print(str(response))
-    print("\n")
-    
+
+    # 发送字符串（自动作为 text frame）
+    client.send("Hello from CatBase!")
+    print("Sent: Hello from CatBase! (str → text frame)\n")
+
+    # 发送 bytes 字面量（如果全部可打印 ASCII，自动作为 text frame）
+    client.send(b"Hello bytes!")
+    print("Sent: Hello bytes! (bytes ASCII → text frame auto-convert)\n")
+
+    # 接收（recv 返回 Str）
+    response: str = client.recv()
+    print("Received: ", response, "\n")
+
     client.close()
     print("Connection closed.\n")
 }

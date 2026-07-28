@@ -1,0 +1,89 @@
+# CatBase byte 类型完整化测试
+# 验证 byte 类型的完整功能
+
+# =====================
+# 测试 1: byte() 构造函数
+# =====================
+def test_constructor() {
+    print("--- Test 1: byte() constructor ---\n")
+    b1: byte = byte(65)
+    b2: byte = byte(90)
+    b3: byte = byte(48)
+    print("  byte(65) = ", b1, "\n")
+    print("  byte(90) = ", b2, "\n")
+    print("  byte(48) = ", b3, "\n")
+}
+
+# =====================
+# 测试 2: byte 与 int 互转
+# =====================
+def test_int_compat() {
+    print("--- Test 2: byte/int compatibility ---\n")
+    n: int = 100
+    b: byte = n    # int 赋值给 byte
+    print("  int->byte: ", b, "\n")
+
+    b2: byte = byte(50)
+    n2: int = b2   # byte 赋值给 int
+    print("  byte->int: ", n2, "\n")
+}
+
+# =====================
+# 测试 3: byte 运算
+# =====================
+def test_arithmetic() {
+    print("--- Test 3: byte arithmetic (auto-promote to int) ---\n")
+    a: byte = byte(10)
+    b: byte = byte(20)
+    a_int: int = a
+    b_int: int = b
+    sum: int = a_int + b_int
+    diff: int = b_int - a_int
+    print("  10 + 20 = ", sum, "\n")
+    print("  20 - 10 = ", diff, "\n")
+}
+
+# =====================
+# 测试 4: 字符与 byte 互转（chr/ord）
+# =====================
+def test_chr_ord() {
+    print("--- Test 4: chr/ord ---\n")
+    c1: str = chr(65)   # 'A'
+    print("  chr(65) = ", c1, "\n")
+    n1: int = ord(c1)
+    print("  ord('A') = ", n1, "\n")
+    b1: byte = byte(65)
+    c2: str = chr(b1)
+    print("  chr(byte(65)) = ", c2, "\n")
+}
+
+# =====================
+# 测试 5: None 转 byte
+# =====================
+def test_none() {
+    print("--- Test 5: None -> byte ---\n")
+    b: byte = byte(None)
+    print("  byte(None) = ", b, "\n")
+}
+
+# =====================
+# 测试 6: 边界值
+# =====================
+def test_boundary() {
+    print("--- Test 6: boundary values ---\n")
+    zero: byte = byte(0)
+    max_val: byte = byte(255)
+    print("  byte(0) = ", zero, "\n")
+    print("  byte(255) = ", max_val, "\n")
+}
+
+# 主函数
+def main(args: list[str]) {
+    test_constructor()
+    test_int_compat()
+    test_arithmetic()
+    test_chr_ord()
+    test_none()
+    test_boundary()
+    print("\n=== All byte type tests completed ===\n")
+}

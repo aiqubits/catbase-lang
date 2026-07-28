@@ -1,0 +1,8 @@
+# test_pkg_bare.cat - 测试 import "apkg/test_pkg"（裸文件名，无 ./ 前缀）
+import "apkg/test_pkg" as hw
+
+def main(args: list[str]) {
+    hw.greet("World")
+    result: int = hw.add(2, 3)
+    print("2 + 3 = " + str(result))
+}

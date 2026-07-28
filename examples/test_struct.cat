@@ -1,0 +1,62 @@
+# CatBase Struct 支持测试
+# 演示自定义结构体的定义、构造、字段访问、内置方法（struct 内部 def）
+
+# 1. 简单 struct 定义
+struct Point {
+    x: int
+    y: int
+
+    # 2. struct 内置方法：与另一个点求和返回新点
+    #    注意：方法必须定义在 struct 内部，第一个参数 self 由编译器自动注入
+    def add(other: Point) -> Point {
+        nx: int = self.x + other.x
+        ny: int = self.y + other.y
+        return Point { x: nx, y: ny }
+    }
+
+    # 返回 self 自身
+    def copy_self() -> Point {
+        return Point { x: self.x, y: self.y }
+    }
+}
+
+# 3. 复杂字段类型：list、Pointer
+struct Tensor {
+    shape: list[int]
+    dtype: int
+    data: Pointer
+}
+
+# 4. 普通函数（不依赖 struct），与 struct 内置方法对比
+def midpoint(a: Point, b: Point) -> Point {
+    mx: int = (a.x + b.x) / 2
+    my: int = (a.y + b.y) / 2
+    return Point { x: mx, y: my }
+}
+
+def main(args: list[str]) {
+    # 构造
+    a: Point = Point { x: 1, y: 2 }
+    b: Point = Point { x: 3, y: 4 }
+    c: Point = Point { x: 5, y: 5 }
+
+    # 字段访问
+    print("a.x = ", a.x, ", a.y = ", a.y, "\n")
+
+    # struct 内置方法调用（向量加法）
+    s: Point = a.add(c)
+    print("a + c = (", s.x, ", ", s.y, ")\n")
+
+    # struct 内置方法调用（拷贝构造）
+    o: Point = a.copy_self()
+    print("a copied = (", o.x, ", ", o.y, ")\n")
+
+    # 计算中点（普通函数）
+    m: Point = midpoint(a, b)
+    print("midpoint x = ", m.x, ", y = ", m.y, "\n")
+
+    # 复杂字段
+    t: Tensor = Tensor { shape: [2, 3], dtype: 1, data: pointer() }
+    print("tensor shape: ", t.shape, "\n")
+    print("tensor dtype: ", t.dtype, "\n")
+}
