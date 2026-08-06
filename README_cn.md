@@ -68,10 +68,10 @@ CatBase 编程语言是为 Ai 应用研发而生，极小运行环境下可以�
 
 ```bash
 # 1. 解压源码包
-$ tar -zxvf ./catbase_v0.0.6_linux_x86_64.tar.gz
+$ tar -zxvf ./catbase_v0.x.x_linux_x86_64.tar.gz
 
 # 2. 进入项目目录
-$ cd catbase_v0.0.6_linux_x86_64
+$ cd catbase_v0.x.x_linux_x86_64
 
 # 3. 运行依赖安装脚本
 $ ./setup-deps.sh
@@ -353,9 +353,9 @@ CatBase 将持续迭代优化，未来计划支持：
 
 ## 👤 关于作者
 
-**CatBase** 编程语言由来自中国的**钟声**设计并研发。钟声同时也是中国珠海的**豆子机器人科技** (<http://dorobot.net>) 公司的创始人。
+**CatBase** 编程语言由来自中国的**钟声**设计并研发。钟声同时也是中国珠海的**豆子机器人科技** (<http://DoRobotAi.com>) 公司的创始人。
 
-**豆子机器人科技** (<http://dorobot.net>) 是一家专注于人工智能和机器人技术的创新公司，致力于开发智能化解决方案。CatBase 作为公司内部使用的编程语言，最初是为了解决项目开发中遇到的效率和性能问题而创建的。
+**豆子机器人科技** (<http://DoRobotAi.com>) 是一家专注于人工智能和机器人技术的创新公司，致力于开发智能化解决方案。CatBase 作为公司内部使用的编程语言，最初是为了解决项目开发中遇到的效率和性能问题而创建的。
 
 > CatBase 编程语言是为 AI 应用研发而生，极小运行环境下可以替代 C，支持 Python 语法。
 
@@ -371,7 +371,7 @@ CatBase 将持续迭代优化，未来计划支持：
   - 🐍 **Python 社区** — 为 CatBase 提供了语法的灵感与参考
   - ⚙️ **C 语言生态** — 为 CatBase 提供了性能优化的参考
   - 💬 **CatBase 社区** — 为 CatBase 提供了反馈和建议
-- 🏢 **中国广东珠海的豆子机器人科技公司** (<http://dorobot.net>) — 为 CatBase 提供了资金支持
+- 🏢 **中国广东珠海的豆子机器人科技公司** (<http://DoRobotAi.com>) — 为 CatBase 提供了资金支持
 
 ---
 
@@ -399,8 +399,8 @@ CatBase 采用**自定义最终用户许可协议（EULA）** 分发，**不是�
 | 渠道 | 链接 |
 |------|------|
 | 📧 邮箱 | bell.zhong@dorobot.net |
-| 🌐 CatBase 官方网站 | <http://catbase-lang.com> |
-| 🏢 豆子机器人科技 | <http://dorobot.net> |
+| 🌐 CatBase 官方网站 | <http://CatBase-lang.com> |
+| 🏢 豆子机器人科技 | <http://DoRobotAi.com> |
 | 📖 完整文档 | [doc/catbase.md](doc/catbase.md) |
 | 🐛 问题反馈 | [GitHub Issues](../../issues) |
 | 💡 功能建议 | [GitHub Discussions](../../discussions) |
@@ -408,10 +408,9 @@ CatBase 采用**自定义最终用户许可协议（EULA）** 分发，**不是�
 ---
 
 <div align="center">
-
 **如果 CatBase 对你有帮助，请给一个 ⭐ Star！**
 
-Made with ❤️ in 中国珠海 · [catbase-lang.com](http://catbase-lang.com) · [dorobot.net](http://dorobot.net)
+Made with ❤️ in 中国珠海 · [catbase-lang.com](http://catbase-lang.com) · [DoRobotAi.com](http://DoRobotAi.com)
 
 加微信交流群：
 

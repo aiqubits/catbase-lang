@@ -68,10 +68,10 @@ The CatBase programming language was born for AI application development. In min
 
 ```bash
 # 1. Extract the source package
-$ tar -zxvf ./catbase_v0.0.6_linux_x86_64.tar.gz
+$ tar -zxvf ./catbase_v0.x.x_linux_x86_64.tar.gz
 
 # 2. Enter the project directory
-$ cd catbase_v0.0.6_linux_x86_64
+$ cd catbase_v0.x.x_linux_x86_64
 
 # 3. Run the dependency installer
 $ ./setup-deps.sh
@@ -92,7 +92,7 @@ Hello world!
 Create `hello.cat`:
 
 ```cat
-def main(args: list[str]) {
+def main() {
     print("Hello world!")
 }
 ```
@@ -352,9 +352,9 @@ We believe CatBase will become a practical, efficient, and easy-to-learn program
 
 ## 👤 About the Author
 
-The **CatBase** programming language was designed and developed by **Zhong Sheng** from China. Zhong Sheng is also the founder of **Dorobot Technology** (<http://dorobot.net>), based in Zhuhai, China.
+The **CatBase** programming language was designed and developed by **Zhong Sheng** from China. Zhong Sheng is also the founder of **Do Robot Technology**  (豆子机器人科技（珠海）有限公司) (<http://DoRobotAi.com>), based in Zhuhai, China.
 
-**Dorobot Technology** (<http://dorobot.net>) is an innovative company focused on artificial intelligence and robotics, dedicated to developing intelligent solutions. CatBase was originally created as an internal programming language to address the efficiency and performance challenges encountered in project development.
+**Do Robot Technology**  (豆子机器人科技（珠海）有限公司) (<http://DoRobotAi.com>) is an innovative company focused on artificial intelligence and robotics, dedicated to developing intelligent solutions. CatBase was originally created as an internal programming language to address the efficiency and performance challenges encountered in project development.
 
 > The CatBase programming language was born for AI application development. In minimal runtime environments, it can replace C and supports Python syntax.
 
@@ -370,7 +370,7 @@ Thanks to the following individuals and organizations for their support and cont
   - 🐍 **The Python Community** — For providing syntax inspiration and reference
   - ⚙️ **The C Language Ecosystem** — For providing performance optimization reference
   - 💬 **The CatBase Community** — For providing feedback and suggestions
-- 🏢 **Dorobot Technology Co., Ltd.** in Zhuhai, China (<http://dorobot.net>) — For providing financial support
+- 🏢 **Do Robot Technology Co., Ltd.** in Zhuhai, China  (豆子机器人科技（珠海）有限公司) (<http://DoRobotAi.com>) — For providing financial support
 
 ---
 
@@ -395,22 +395,21 @@ The Software is provided **"AS IS"**, without warranty of any kind, express or i
 
 ## 📞 Contact Us
 
-| Channel | Link |
-|------|------|
-| 📧 Email | bell.zhong@dorobot.net |
-| 🌐 CatBase Official Website | <http://catbase-lang.com> |
-| 🏢 Dorobot Technology | <http://dorobot.net> |
-| 📖 Full Documentation | [doc/catbase.md](doc/catbase.md) |
-| 🐛 Issue Tracker | [GitHub Issues](../../issues) |
-| 💡 Feature Suggestions | [GitHub Discussions](../../discussions) |
+| Channel                                                | Link                                    |
+| ------------------------------------------------------ | --------------------------------------- |
+| 📧 Email                                                | bell.zhong@dorobot.net                  |
+| 🌐 CatBase Official Website                             | <http://CatBase-lang.com>               |
+| 🏢 Dorobot Technology  (豆子机器人科技（珠海）有限公司) | <http://DoRobotAi.com>                  |
+| 📖 Full Documentation                                   | [doc/catbase.md](doc/catbase.md)        |
+| 🐛 Issue Tracker                                        | [GitHub Issues](../../issues)           |
+| 💡 Feature Suggestions                                  | [GitHub Discussions](../../discussions) |
 
 ---
 
 <div align="center">
-
 **If CatBase helps you, please give it a ⭐ Star!**
 
-Made with ❤️ in Zhuhai, China · [catbase-lang.com](http://catbase-lang.com) · [dorobot.net](http://dorobot.net)
+Made with ❤️ in Zhuhai, China · [CatBase-lang.com](http://catbase-lang.com) · [DoRobotAi.com](http://DoRobotAi.com)
 
 Join WeChat communication group:
 
