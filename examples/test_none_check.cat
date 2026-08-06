@@ -55,7 +55,7 @@ def main(args:list[str]) {
         h:dict[str, int] = {"k": 0}
         print("7 default dict =", h)
         //print("len:", len(h))
-        
+     
     } except Exception as e {
         print("Error:", e, "\n")
     }

@@ -1,0 +1,6 @@
+# test_local.cat - 用于被 test_opus_relpath.cat 导入的本地包
+def greet(name: str) -> str {
+    return "Hello, " + name + "!"
+}
+
+LOCAL_CONST: int = 42

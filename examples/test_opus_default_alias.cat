@@ -1,0 +1,34 @@
+# test_opus_default_alias.cat
+# 测试新 import 语法的第三条：
+#   - 路径和包名都不加引号
+#   - 不写 as alias，别名默认为包名（"opus"）
+#   - 写目录名（"opus"）而不是文件路径（"opus/index"），
+#     编译器自动寻找 packages/opus/index.catc
+#
+# 等价于旧语法：import "opus/index" as opus
+
+import opus
+
+def main(args: list[str]) {
+    print("=== Opus Default Alias Test ===\n")
+    print("Default alias: opus (not opus_lib)")
+    print("APPLICATION_VOIP =", opus.APPLICATION_VOIP)
+    print("APPLICATION_AUDIO =", opus.APPLICATION_AUDIO)
+    print("APPLICATION_LOWDELAY =", opus.APPLICATION_LOWDELAY)
+
+    # 通过默认别名调用编码器
+    enc_id: int = opus.Encoder(48000, 1, opus.APPLICATION_VOIP)
+    if enc_id == 0 {
+        print("ERROR: Failed to create encoder")
+        return
+    }
+    print("Encoder created, id =", enc_id)
+
+    pcm: bytes = bytes_alloc(960)
+    encoded: bytes = opus.encode(enc_id, pcm, 480)
+    print("Encoded size:", bytes_len(encoded), "bytes")
+
+    opus.destroy_encoder(enc_id)
+    opus.close()
+    print("\nDEFAULT ALIAS IMPORT TEST PASSED")
+}

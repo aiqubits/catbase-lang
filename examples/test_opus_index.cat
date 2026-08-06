@@ -1,0 +1,72 @@
+# test_opus_index.cat
+# 测试 packages/opus/index.catc 提供的公开 API（Python opuslib 风格）
+#
+# 验证用户代码：
+#   - 只需要 import "opus/index" as opus_lib
+#   - 不需要写 from 声明
+#   - 不需要 import libopus.so
+#   - 不接触任何 Pointer
+#
+# API 对照（Python → CatBase）:
+#   opuslib.Encoder(fs, ch, app)        → opus_lib.Encoder(sample_rate, channels, application)
+#   encoder.encode(pcm, frame_size)     → opus_lib.encode(encoder_id, pcm, frame_size)
+#   encoder.encode_float(pcm, fs)       → opus_lib.encode_float(encoder_id, pcm, frame_size)
+#   opuslib.Decoder(fs, ch)             → opus_lib.Decoder(sample_rate, channels)
+#   decoder.decode(data, fs, fec)       → opus_lib.decode(decoder_id, data, frame_size, decode_fec)
+#   decoder.decode_float(data, fs, fec) → opus_lib.decode_float(decoder_id, data, frame_size, decode_fec)
+#
+# 新 import 语法（无引号）：
+#   import opus/index as opus_lib   旧：import "opus/index" as opus_lib
+#   import opus                     旧：import "opus/index" as opus
+#   （自动寻找 packages/opus/index.catc，默认别名 = "opus"）
+
+import opus/index as opus_lib
+
+def main(args: list[str]) {
+    print("=== Opus Index API Test (Pythonic naming) ===\n")
+
+    # 1. 创建编码器（对应 Python: opuslib.Encoder(fs, channels, application)）
+    # 现在可以通过包别名直接访问常量，对齐 Python 的 opuslib.APPLICATION_VOIP
+    enc_id: int = opus_lib.Encoder(48000, 1, opus_lib.APPLICATION_VOIP)
+    if enc_id == 0 {
+        print("ERROR: Failed to create encoder")
+        return
+    }
+    print("Encoder created, id =", enc_id)
+
+    # 2. 准备 PCM 数据
+    pcm: bytes = bytes_alloc(960)
+    print("PCM size:", bytes_len(pcm), "bytes")
+
+    # 3. int16 编码（对应 Python: encoder.encode(pcm, frame_size)）
+    encoded: bytes = opus_lib.encode(enc_id, pcm, 480)
+    print("Encoded size:", bytes_len(encoded), "bytes")
+
+    # 4. 创建解码器（对应 Python: opuslib.Decoder(fs, channels)）
+    dec_id: int = opus_lib.Decoder(48000, 1)
+    if dec_id == 0 {
+        print("ERROR: Failed to create decoder")
+        opus_lib.destroy_encoder(enc_id)
+        return
+    }
+    print("Decoder created, id =", dec_id)
+
+    # 5. 解码（对应 Python: decoder.decode(data, frame_size, decode_fec)）
+    pcm_out: bytes = opus_lib.decode(dec_id, encoded, 480, 0)
+    print("Decoded size:", bytes_len(pcm_out), "bytes")
+
+    # 6. 测试 encode_float / decode_float
+    pcm_float: bytes = bytes_alloc(480 * 4)  # 480 samples * 4 bytes (float32)
+    encoded_f: bytes = opus_lib.encode_float(enc_id, pcm_float, 480)
+    print("Float-encoded size:", bytes_len(encoded_f), "bytes")
+    pcm_out_f: bytes = opus_lib.decode_float(dec_id, encoded_f, 480, 0)
+    print("Float-decoded size:", bytes_len(pcm_out_f), "bytes")
+
+    # 7. 清理
+    opus_lib.destroy_encoder(enc_id)
+    opus_lib.destroy_decoder(dec_id)
+    opus_lib.close()
+    print("Cleanup done")
+
+    print("\nOPUS INDEX API TEST PASSED")
+}

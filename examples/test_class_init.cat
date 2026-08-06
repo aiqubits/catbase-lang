@@ -1,4 +1,4 @@
-struct Point {
+class Point {
     x: int
     y: int
 
@@ -17,7 +17,7 @@ struct Point {
 }
 
 # 复杂字段类型 + __init__
-struct Rect {
+class Rect {
     x: int
     y: int
     w: int

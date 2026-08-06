@@ -113,7 +113,7 @@ pub fn input(allocator: Allocator) Str {
 
     restoreTerminal();
 
-    return Str.init(allocator, buf[0..len]) catch Str{ .data = &[_]u8{}, .allocator = allocator, .owned = true };
+    return Str.init(allocator, buf[0..len]) catch Str{ .data = &[_]u8{}, .allocator = allocator, .borrowed = false };
 }
 
 // inputWithPrompt 函数
@@ -273,7 +273,7 @@ pub const File = struct {
         return Str{
             .data = content,
             .allocator = std.heap.page_allocator,
-            .owned = true,
+            .borrowed = false,
             .is_bytes = false,
         };
     }
@@ -467,7 +467,7 @@ pub const RecordStream = struct {
                 const data = Str{
                     .data = buffer[0..actual_bytes],
                     .allocator = safe_allocator,
-                    .owned = false,
+                    .borrowed = true,
                 };
                 cb(data);
             } else if (self.callback_bytes) |cb| {
@@ -499,7 +499,7 @@ pub const RecordStream = struct {
             return Str{
                 .data = "",
                 .allocator = self.allocator,
-                .owned = false,
+                .borrowed = true,
             };
         }
 
@@ -508,7 +508,7 @@ pub const RecordStream = struct {
         return Str{
             .data = buffer[0..actual_bytes],
             .allocator = self.allocator,
-            .owned = true,
+            .borrowed = false,
         };
     }
 
@@ -676,7 +676,7 @@ pub const PlayStream = struct {
 
             if (data.data.len == 0) {
                 // 释放空数据（如果 owned）
-                if (data.owned and data.data.len > 0) {
+                if (!data.borrowed and data.data.len > 0) {
                     data.deinit();
                 }
                 std.time.sleep(10_000_000);
@@ -689,7 +689,7 @@ pub const PlayStream = struct {
             _ = frames_written;
 
             // 释放回调返回的 Str 数据
-            if (data.owned) {
+            if (!data.borrowed) {
                 data.deinit();
             }
         }
@@ -810,8 +810,8 @@ pub fn getInputDeviceList(allocator: Allocator) List(Dict(Str, Str)) {
         const key_name = allocator.dupe(u8, "name") catch continue;
         const key_desc = allocator.dupe(u8, "description") catch continue;
 
-        dict.put(Str{ .data = key_name, .allocator = allocator, .owned = true }, Str{ .data = device_str, .allocator = allocator, .owned = true }) catch continue;
-        dict.put(Str{ .data = key_desc, .allocator = allocator, .owned = true }, Str.init(allocator, device_name) catch continue) catch continue;
+        dict.put(Str{ .data = key_name, .allocator = allocator, .borrowed = false }, Str{ .data = device_str, .allocator = allocator, .borrowed = false }) catch continue;
+        dict.put(Str{ .data = key_desc, .allocator = allocator, .borrowed = false }, Str.init(allocator, device_name) catch continue) catch continue;
         device_list.append(dict) catch continue;
     }
 
@@ -866,8 +866,8 @@ pub fn getOutputDeviceList(allocator: Allocator) List(Dict(Str, Str)) {
         const key_name = allocator.dupe(u8, "name") catch continue;
         const key_desc = allocator.dupe(u8, "description") catch continue;
 
-        dict.put(Str{ .data = key_name, .allocator = allocator, .owned = true }, Str{ .data = device_str, .allocator = allocator, .owned = true }) catch continue;
-        dict.put(Str{ .data = key_desc, .allocator = allocator, .owned = true }, Str.init(allocator, device_name) catch continue) catch continue;
+        dict.put(Str{ .data = key_name, .allocator = allocator, .borrowed = false }, Str{ .data = device_str, .allocator = allocator, .borrowed = false }) catch continue;
+        dict.put(Str{ .data = key_desc, .allocator = allocator, .borrowed = false }, Str.init(allocator, device_name) catch continue) catch continue;
         device_list.append(dict) catch continue;
     }
 
@@ -932,7 +932,7 @@ pub const JsonValue = union(enum) {
 
     pub fn get(self: JsonValue, key: []const u8, default: JsonValue) JsonValue {
         return switch (self) {
-            .dict => |d| d.getOrElse(Str{ .data = @constCast(key), .allocator = undefined, .owned = false }, default),
+            .dict => |d| d.getOrElse(Str{ .data = @constCast(key), .allocator = undefined, .borrowed = true }, default),
             else => default,
         };
     }
@@ -957,24 +957,24 @@ pub const JsonValue = union(enum) {
             .str => |s| s.clone() catch unreachable,
             .int => |i| blk: {
                 const alloc = self.getAllocator();
-                break :blk Str{ .data = std.fmt.allocPrint(alloc, "{d}", .{i}) catch unreachable, .allocator = alloc, .owned = true };
+                break :blk Str{ .data = std.fmt.allocPrint(alloc, "{d}", .{i}) catch unreachable, .allocator = alloc, .borrowed = false };
             },
             .float => |f| blk: {
                 const alloc = self.getAllocator();
-                break :blk Str{ .data = std.fmt.allocPrint(alloc, "{d}", .{f}) catch unreachable, .allocator = alloc, .owned = true };
+                break :blk Str{ .data = std.fmt.allocPrint(alloc, "{d}", .{f}) catch unreachable, .allocator = alloc, .borrowed = false };
             },
             .bool => |b| blk: {
                 const alloc = self.getAllocator();
-                break :blk Str{ .data = if (b) std.fmt.allocPrint(alloc, "true", .{}) catch unreachable else std.fmt.allocPrint(alloc, "false", .{}) catch unreachable, .allocator = alloc, .owned = true };
+                break :blk Str{ .data = if (b) std.fmt.allocPrint(alloc, "true", .{}) catch unreachable else std.fmt.allocPrint(alloc, "false", .{}) catch unreachable, .allocator = alloc, .borrowed = false };
             },
-            .null => Str{ .data = @constCast("null"), .allocator = undefined, .owned = false },
+            .null => Str{ .data = @constCast("null"), .allocator = undefined, .borrowed = true },
             .list => blk: {
                 const alloc = self.getAllocator();
-                break :blk Str{ .data = std.fmt.allocPrint(alloc, "[list]", .{}) catch unreachable, .allocator = alloc, .owned = true };
+                break :blk Str{ .data = std.fmt.allocPrint(alloc, "[list]", .{}) catch unreachable, .allocator = alloc, .borrowed = false };
             },
             .dict => blk: {
                 const alloc = self.getAllocator();
-                break :blk Str{ .data = std.fmt.allocPrint(alloc, "[dict]", .{}) catch unreachable, .allocator = alloc, .owned = true };
+                break :blk Str{ .data = std.fmt.allocPrint(alloc, "[dict]", .{}) catch unreachable, .allocator = alloc, .borrowed = false };
             },
         };
     }
@@ -1225,7 +1225,7 @@ pub fn bytesToStr(allocator: Allocator, b: []u8) !Str {
     return Str{
         .data = try allocator.dupe(u8, b),
         .allocator = allocator,
-        .owned = true,
+        .borrowed = false,
         .is_bytes = true,
     };
 }
@@ -1258,7 +1258,10 @@ pub fn strFromJsonValue(allocator: Allocator, jv: JsonValue) !Str {
 pub const Str = struct {
     data: []u8,
     allocator: Allocator,
-    owned: bool,
+    /// borrowed: true 表示此 Str 的内存由外部（Wrapper）拥有，CatBase 不会释放；
+    /// borrowed: false 表示 CatBase 自己分配，在 deinit 时释放。
+    /// 这是 owned: bool 的反义命名（borrowed = !owned），但语义更清晰。
+    borrowed: bool,
     is_bytes: bool = false,
 
     pub fn init(allocator: Allocator, bytes: []const u8) !Str {
@@ -1266,7 +1269,7 @@ pub const Str = struct {
         return Str{
             .data = copy,
             .allocator = allocator,
-            .owned = true,
+            .borrowed = false,
             .is_bytes = false,
         };
     }
@@ -1276,7 +1279,7 @@ pub const Str = struct {
         return Str{
             .data = copy,
             .allocator = allocator,
-            .owned = true,
+            .borrowed = false,
             .is_bytes = true,
         };
     }
@@ -1285,10 +1288,10 @@ pub const Str = struct {
         if (@TypeOf(value) == JsonValue) {
             return switch (value) {
                 .str => |s| s.clone(),
-                .int => |i| Str{ .data = try std.fmt.allocPrint(allocator, "{}", .{i}), .allocator = allocator, .owned = true },
-                .float => |f| Str{ .data = try std.fmt.allocPrint(allocator, "{}", .{f}), .allocator = allocator, .owned = true },
-                .bool => |b| Str{ .data = if (b) try allocator.dupe(u8, "true") else try allocator.dupe(u8, "false"), .allocator = allocator, .owned = true },
-                .null => Str{ .data = try allocator.dupe(u8, "null"), .allocator = allocator, .owned = true },
+                .int => |i| Str{ .data = try std.fmt.allocPrint(allocator, "{}", .{i}), .allocator = allocator, .borrowed = false },
+                .float => |f| Str{ .data = try std.fmt.allocPrint(allocator, "{}", .{f}), .allocator = allocator, .borrowed = false },
+                .bool => |b| Str{ .data = if (b) try allocator.dupe(u8, "true") else try allocator.dupe(u8, "false"), .allocator = allocator, .borrowed = false },
+                .null => Str{ .data = try allocator.dupe(u8, "null"), .allocator = allocator, .borrowed = false },
                 .list => |l| {
                     var result = std.ArrayList(u8).init(allocator);
                     try result.append('[');
@@ -1299,7 +1302,7 @@ pub const Str = struct {
                         allocator.free(itemStr.data);
                     }
                     try result.append(']');
-                    return Str{ .data = result.items, .allocator = allocator, .owned = true };
+                    return Str{ .data = result.items, .allocator = allocator, .borrowed = false };
                 },
                 .dict => |d| {
                     var result = std.ArrayList(u8).init(allocator);
@@ -1317,7 +1320,7 @@ pub const Str = struct {
                         allocator.free(valStr.data);
                     }
                     try result.append('}');
-                    return Str{ .data = result.items, .allocator = allocator, .owned = true };
+                    return Str{ .data = result.items, .allocator = allocator, .borrowed = false };
                 },
             };
         }
@@ -1325,7 +1328,7 @@ pub const Str = struct {
         return Str{
             .data = str,
             .allocator = allocator,
-            .owned = true,
+            .borrowed = false,
         };
     }
 
@@ -1333,27 +1336,27 @@ pub const Str = struct {
         return Str{
             .data = buffer,
             .allocator = allocator,
-            .owned = true,
+            .borrowed = false,
         };
     }
 
     pub fn repeat(allocator: Allocator, pattern: Str, times: i64) !Str {
         if (times <= 0 or pattern.data.len == 0) {
-            return Str{ .data = &[_]u8{}, .allocator = allocator, .owned = false };
+            return Str{ .data = &[_]u8{}, .allocator = allocator, .borrowed = true };
         }
         const total_len = pattern.data.len * @as(usize, @intCast(times));
         const buffer = try allocator.alloc(u8, total_len);
         for (0..total_len) |i| {
             buffer[i] = pattern.data[i % pattern.data.len];
         }
-        return Str{ .data = buffer, .allocator = allocator, .owned = true };
+        return Str{ .data = buffer, .allocator = allocator, .borrowed = false };
     }
 
     pub fn fromSlice(allocator: Allocator, slice: []const u8) Str {
         return Str{
             .data = @constCast(slice),
             .allocator = allocator,
-            .owned = false,
+            .borrowed = true,
         };
     }
 
@@ -1370,11 +1373,11 @@ pub const Str = struct {
     }
 
     pub fn deinit(self: *Str) void {
-        if (self.owned and self.data.len > 0) {
+        if (!self.borrowed and self.data.len > 0) {
             self.allocator.free(self.data);
         }
         self.data = &[_]u8{};
-        self.owned = false;
+        self.borrowed = true;
     }
 
     pub fn asSlice(self: *const Str) []const u8 {
@@ -1384,7 +1387,7 @@ pub const Str = struct {
     pub fn intoOwned(self: *Str) []u8 {
         const slice = self.data;
         self.data = &[_]u8{};
-        self.owned = false;
+        self.borrowed = true;
         return slice;
     }
 
@@ -1392,7 +1395,7 @@ pub const Str = struct {
         var buf = try allocator.alloc(u8, self.data.len + other.data.len);
         @memcpy(buf[0..self.data.len], self.data);
         @memcpy(buf[self.data.len..], other.data);
-        return Str{ .data = buf, .allocator = allocator, .owned = true };
+        return Str{ .data = buf, .allocator = allocator, .borrowed = false };
     }
 
     pub fn len(self: *const Str) usize {
@@ -1414,7 +1417,7 @@ pub const Str = struct {
         for (self.data, 0..) |c, i| {
             buf[i] = if (c >= 'a' and c <= 'z') c - 32 else c;
         }
-        return Str{ .data = buf, .allocator = allocator, .owned = true };
+        return Str{ .data = buf, .allocator = allocator, .borrowed = false };
     }
 
     pub fn lower(self: *const Str, allocator: Allocator) !Str {
@@ -1422,7 +1425,7 @@ pub const Str = struct {
         for (self.data, 0..) |c, i| {
             buf[i] = if (c >= 'A' and c <= 'Z') c + 32 else c;
         }
-        return Str{ .data = buf, .allocator = allocator, .owned = true };
+        return Str{ .data = buf, .allocator = allocator, .borrowed = false };
     }
 
     pub fn capitalize(self: *const Str, allocator: Allocator) !Str {
@@ -1431,7 +1434,7 @@ pub const Str = struct {
         for (self.data, 0..) |c, i| {
             buf[i] = if (i == 0 and c >= 'a' and c <= 'z') c - 32 else if (i > 0 and c >= 'A' and c <= 'Z') c + 32 else c;
         }
-        return Str{ .data = buf, .allocator = allocator, .owned = true };
+        return Str{ .data = buf, .allocator = allocator, .borrowed = false };
     }
 
     pub fn title(self: *const Str, allocator: Allocator) !Str {
@@ -1447,7 +1450,7 @@ pub const Str = struct {
             }
             prev_is_space = c == ' ' or c == '\t' or c == '\n';
         }
-        return Str{ .data = buf, .allocator = allocator, .owned = true };
+        return Str{ .data = buf, .allocator = allocator, .borrowed = false };
     }
 
     pub fn strip(self: *const Str, allocator: Allocator) !Str {
@@ -1591,7 +1594,7 @@ pub const Str = struct {
             @memcpy(buf[pos..][0..item.data.len], item.data);
             pos += item.data.len;
         }
-        return Str{ .data = buf, .allocator = allocator, .owned = true };
+        return Str{ .data = buf, .allocator = allocator, .borrowed = false };
     }
 
     pub fn replace(self: *const Str, allocator: Allocator, old: Str, new: Str) !Str {
@@ -1609,7 +1612,7 @@ pub const Str = struct {
             }
         }
         const slice = try buf.toOwnedSlice();
-        return Str{ .data = slice, .allocator = allocator, .owned = true };
+        return Str{ .data = slice, .allocator = allocator, .borrowed = false };
     }
 
     pub fn isdigit(self: *const Str) bool {
@@ -1683,7 +1686,7 @@ pub const Str = struct {
     pub fn subSlice(self: *const Str, allocator: Allocator, start: usize, end: usize) !Str {
         if (start >= end) return init(allocator, "");
         const slice = try allocator.dupe(u8, self.data[start..end]);
-        return Str{ .data = slice, .allocator = allocator, .owned = true };
+        return Str{ .data = slice, .allocator = allocator, .borrowed = false };
     }
 
     pub fn sliceFrom(self: *const Str, allocator: Allocator, start: usize) !Str {
@@ -1696,7 +1699,7 @@ pub const Str = struct {
 
     pub fn formatStr(self: *const Str, allocator: Allocator, args: anytype) !Str {
         const result = try std.fmt.allocPrint(allocator, self.data, args);
-        return Str{ .data = result, .allocator = allocator, .owned = true };
+        return Str{ .data = result, .allocator = allocator, .borrowed = false };
     }
 
     pub fn isnumeric(self: *const Str) bool {
@@ -1729,7 +1732,7 @@ pub const Response = struct {
     pub fn initStream(allocator: Allocator, status_code: u16, stream: std.net.Stream) Response {
         return Response{
             .status_code = status_code,
-            .body = Str{ .data = &[_]u8{}, .allocator = allocator, .owned = false },
+            .body = Str{ .data = &[_]u8{}, .allocator = allocator, .borrowed = true },
             .allocator = allocator,
             .stream = stream,
         };
@@ -1864,6 +1867,20 @@ pub fn List(comptime T: type) type {
 
         pub fn set(self: *Self, idx: usize, value: T) void {
             self.items.items[idx] = value;
+        }
+
+        /// 按索引删除元素（O(n) 操作，因为 std.ArrayList.orderedRemove 移动后续元素）
+        /// 如果 idx 越界则不做任何操作
+        pub fn remove(self: *Self, idx: usize) void {
+            if (idx >= self.items.items.len) {
+                return;
+            }
+            _ = self.items.orderedRemove(idx);
+        }
+
+        /// 清空所有元素（保留容量）
+        pub fn clear(self: *Self) void {
+            self.items.clearRetainingCapacity();
         }
 
         pub fn clone(self: *Self) !Self {
@@ -2216,7 +2233,7 @@ fn extractBody(response: []u8) struct { status_code: u16, body: Str } {
 
     return .{
         .status_code = status_code,
-        .body = Str{ .data = body_content, .allocator = undefined, .owned = false },
+        .body = Str{ .data = body_content, .allocator = undefined, .borrowed = true },
     };
 }
 
@@ -2278,7 +2295,7 @@ pub fn httpPostAdvanced(allocator: Allocator, url: Str, body: Str, headers: Str,
     return Str{
         .data = buffer[0..total_read],
         .allocator = allocator,
-        .owned = false,
+        .borrowed = true,
     };
 }
 
@@ -2620,7 +2637,7 @@ pub const TCPSocket = struct {
         return Str{
             .data = buffer[0..bytes_read],
             .allocator = self.allocator,
-            .owned = true,
+            .borrowed = false,
         };
     }
 
@@ -2646,7 +2663,7 @@ pub const TCPClient = struct {
         return Str{
             .data = buffer[0..bytes_read],
             .allocator = self.allocator,
-            .owned = true,
+            .borrowed = false,
         };
     }
 
@@ -2701,7 +2718,7 @@ pub const UDPSocket = struct {
         return Str{
             .data = buffer[0..bytes_read],
             .allocator = self.allocator,
-            .owned = true,
+            .borrowed = false,
         };
     }
 
@@ -2716,12 +2733,12 @@ pub const UDPSocket = struct {
             .data = Str{
                 .data = buffer[0..bytes_read],
                 .allocator = self.allocator,
-                .owned = true,
+                .borrowed = false,
             },
             .host = Str{
                 .data = net_addr.toString() catch unreachable,
                 .allocator = self.allocator,
-                .owned = false,
+                .borrowed = true,
             },
             .port = net_addr.getPort(),
         };
@@ -2768,7 +2785,7 @@ pub const UDPSocket = struct {
         return Str{
             .data = buffer[0..bytes_read],
             .allocator = self.allocator,
-            .owned = true,
+            .borrowed = false,
         };
     }
 
@@ -2835,7 +2852,7 @@ pub fn jsonStringify(allocator: Allocator, obj: anytype) Str {
         jsonStringifyValue(allocator, &result, obj.*);
         // 先复制，再让 defer 释放 result.items
         const result_copy = allocator.dupe(u8, result.items) catch unreachable;
-        return Str{ .data = result_copy, .allocator = allocator, .owned = true };
+        return Str{ .data = result_copy, .allocator = allocator, .borrowed = false };
     }
 
     if (@hasField(T, "map")) {
@@ -3212,7 +3229,7 @@ pub fn httpGet(allocator: Allocator, url: Str, timeout_secs: u32) !Str {
     return Str{
         .data = buffer[0..bytes_read],
         .allocator = allocator,
-        .owned = false,
+        .borrowed = true,
     };
 }
 
@@ -3353,7 +3370,7 @@ pub const WebSocketClient = struct {
             return Str{
                 .data = "",
                 .allocator = self.allocator,
-                .owned = true,
+                .borrowed = false,
             };
         }
 
@@ -3390,7 +3407,7 @@ pub const WebSocketClient = struct {
         return Str{
             .data = try self.allocator.dupe(u8, payload[0..to_read]),
             .allocator = self.allocator,
-            .owned = true,
+            .borrowed = false,
         };
     }
 
@@ -3478,7 +3495,7 @@ pub const SerialPort = struct {
 
     pub fn read(self: *Self, length: usize) Str {
         if (!self.is_open) {
-            return Str{ .data = "", .allocator = std.heap.page_allocator, .owned = false };
+            return Str{ .data = "", .allocator = std.heap.page_allocator, .borrowed = true };
         }
         return serialRead(self.handle, length);
     }
@@ -3612,11 +3629,11 @@ fn serialRead(handle: SerialHandle, length: usize) Str {
             &bytes_read_win,
             null,
         ) == 0) {
-            return Str{ .data = "", .allocator = std.heap.page_allocator, .owned = false };
+            return Str{ .data = "", .allocator = std.heap.page_allocator, .borrowed = true };
         }
         bytes_read = bytes_read_win;
     } else {
-        bytes_read = std.posix.read(handle, buffer[0..size]) catch return Str{ .data = "", .allocator = std.heap.page_allocator, .owned = false };
+        bytes_read = std.posix.read(handle, buffer[0..size]) catch return Str{ .data = "", .allocator = std.heap.page_allocator, .borrowed = true };
     }
 
     const result = std.heap.page_allocator.alloc(u8, bytes_read) catch unreachable;
@@ -3625,7 +3642,7 @@ fn serialRead(handle: SerialHandle, length: usize) Str {
     return Str{
         .data = result,
         .allocator = std.heap.page_allocator,
-        .owned = true,
+        .borrowed = false,
     };
 }
 
@@ -3773,7 +3790,7 @@ pub const QueueItem = struct {
         const new_str = Str{
             .data = val.allocator.dupe(u8, val.data) catch val.data,
             .allocator = val.allocator,
-            .owned = true,
+            .borrowed = false,
         };
         return QueueItem{
             .item_type = .Str,
@@ -3819,7 +3836,7 @@ pub const QueueItem = struct {
     // 获取 str 值 - 按值接收，克隆数据后释放原始item
     pub fn getStr(self: QueueItem) Str {
         if (self.item_type != .Str) {
-            return Str{ .data = "", .allocator = std.heap.page_allocator, .owned = true };
+            return Str{ .data = "", .allocator = std.heap.page_allocator, .borrowed = false };
         }
         // 保存allocator
         const allocator = self.str_val.allocator;
@@ -3828,12 +3845,12 @@ pub const QueueItem = struct {
             // 如果克隆失败，转移所有权
             const data = self.str_val.data;
             var mutable = self;
-            mutable.str_val.owned = false;
+            mutable.str_val.borrowed = true;
             mutable.item_type = .Undefined;
             return Str{
                 .data = data,
                 .allocator = allocator,
-                .owned = true,
+                .borrowed = false,
             };
         };
         // 释放原始item的数据
@@ -3844,7 +3861,7 @@ pub const QueueItem = struct {
         return Str{
             .data = cloned_data,
             .allocator = allocator,
-            .owned = true,
+            .borrowed = false,
         };
     }
 
@@ -4131,7 +4148,7 @@ pub fn httpPostJson(allocator: Allocator, url: Str, body: Str) Str {
     return Str{
         .data = buffer[0..bytes_read],
         .allocator = allocator,
-        .owned = false,
+        .borrowed = true,
     };
 }
 
@@ -4249,7 +4266,7 @@ pub fn recordAudio(allocator: Allocator, duration: i64, sample_rate: i64, channe
     return Str{
         .data = audio_data.items,
         .allocator = allocator,
-        .owned = true,
+        .borrowed = false,
     };
 }
 

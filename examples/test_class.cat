@@ -1,7 +1,3 @@
-// CatBase class 关键字示例
-// 演示：class 是 struct 的完全等价语法糖
-// 用途：降低从 Python/Java/JS 转过来的用户的学习门槛
-
 class Point {
     x: int
     y: int

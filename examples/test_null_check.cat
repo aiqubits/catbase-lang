@@ -6,18 +6,16 @@ def get_value(flag: int) -> str {
     }
 }
 
-def test_null_check() {
-    result: str = get_value(0)
-    print(result)
-    
+def main(args:list[str]) {
+
     result2: str = get_value(1)
     if result2 is None {
         print("None")
     } else {
         print(result2)
     }
-}
 
-def main(args:list[str]) {
-    test_null_check()
+    result: str = get_value(0)
+    print(result)
+        
 }

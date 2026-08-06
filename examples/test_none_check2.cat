@@ -1,0 +1,53 @@
+def main(args:list[str]){
+        xint:int=None
+        ystr:str=None
+        xfloat: float = None
+        xbool: bool = None
+        xbyte: byte = None
+        xbytes: bytes = None        
+        xany: any = None
+        xlist: list[int] = None
+        xdict: dict[str, str]=None
+
+        if xint is None {print("xint is None")}
+        if ystr is None {print("ystr is None")}
+        if xfloat is None {print("xfloat is None")}
+        if xbool is None {print("xbool is None")}
+        if xbyte is None {print("xbyte is None")}
+        if xbytes is None {print("xbytes is None")}
+        if xany is None {print("xany is None")}
+        if xlist is None {print("xlist is None")}
+        if xdict is None {print("xdict is None")}
+
+        print(xint)
+        print(ystr)
+        print(xfloat)
+        print(xbool)
+        print(xbyte)
+        print(xbytes)
+        print(xany)
+        print(xlist)
+        print(xdict)
+
+        xint=1
+        ystr="1"
+        xfloat=1
+        xbool=True
+        xbyte=b"A"
+        xbytes=b"hello"
+        xany="a"
+        xlist=[1,2]
+        xdict={"b": "AAA"}
+
+        if xint is not None {print("xint is not  None")}
+        if ystr is not  None {print("ystr is not  None")}
+        if xfloat is not  None {print("xfloat is not  None")}
+        if xbool is not  None {print("xbool is not  None")}
+        if xbyte is not  None {print("xbyte is not  None")}
+        if xbytes is not  None {print("xbytes is not  None")}
+        if xany is not  None {print("xany is not  None")}
+        if xlist is not  None {print("xlist is not  None")}
+        if xdict is not  None {print("xdict is not  None")}
+
+                   
+}

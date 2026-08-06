@@ -1,0 +1,13 @@
+# test_opus_quoted_legacy.cat
+# 验证旧引号 import 语法仍然可用
+import "opus/index" as legacy_lib
+
+def main(args: list[str]) {
+    print("=== Legacy Quoted Import Test ===")
+    print("APPLICATION_VOIP =", legacy_lib.APPLICATION_VOIP)
+    enc_id: int = legacy_lib.Encoder(48000, 1, legacy_lib.APPLICATION_VOIP)
+    print("Encoder id:", enc_id)
+    legacy_lib.destroy_encoder(enc_id)
+    legacy_lib.close()
+    print("LEGACY IMPORT TEST PASSED")
+}

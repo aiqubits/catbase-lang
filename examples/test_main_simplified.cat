@@ -1,0 +1,29 @@
+# ============================================================
+# 简化 main 函数示例
+# ============================================================
+#
+# CatBase 支持两种 main 函数形式：
+#
+#   1. 完整形式（接收命令行参数）：
+#      def main(args: list[str]) { ... }
+#      此时 args 列表包含启动程序时传入的所有命令行参数
+#      （不含程序名本身）。
+#
+#   2. 简化形式（不接收命令行参数）：
+#      def main() { ... }
+#      若程序不需要读取命令行参数，可以省略参数声明。
+#      编译器会发出一条软警告（不影响编译）：
+#        [main-simplified] main function declared with no parameters.
+#      运行二进制时传入的命令行参数会被自动忽略。
+#
+# 本文件演示简化形式。运行方式：
+#   catbasecc examples/test_main_simplified.cat
+#   ./test_main_simplified
+#   ./test_main_simplified a b c   # 这里的 a b c 会被忽略
+# ============================================================
+
+def main() {
+    print("Hello from simplified main!\n")
+    print("This program does not need command-line arguments.\n")
+    print("You can pass any args, they will be silently ignored.\n")
+}

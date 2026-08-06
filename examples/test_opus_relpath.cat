@@ -1,0 +1,12 @@
+# test_opus_relpath.cat
+# 测试相对路径无引号 import：import ./xxx.cat as alias
+# 与旧 import "./xxx" as alias 等价
+
+import ./test_local.catc as local
+
+def main(args: list[str]) {
+    print("=== Relative Path Unquoted Import Test ===\n")
+    print("greet:", local.greet("CatBase"))
+    print("LOCAL_CONST:", local.LOCAL_CONST)
+    print("\nRELATIVE PATH TEST PASSED")
+}

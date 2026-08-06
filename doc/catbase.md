@@ -23,6 +23,12 @@ CatBase语言的语法看起来像python，比如用def定义函数，但是与�
 1. [简介](#1-简介)
 2. [基础语法](#2-基础语法)
 3. [数据类型](#3-数据类型)
+3.1 [基本数据类型](#31-基本数据类型)
+3.2 [复合数据类型](#32-复合数据类型)
+3.3 [类型转换](#33-类型转换)
+3.4 [结构体（struct / class）](#34-结构体struct--class)
+3.5 [None 类型](#35-none-类型)
+3.6 [any 类型的使用注意事项](#36-any-类型的使用注意事项)
 4. [运算符](#4-运算符)
 5. [控制流](#5-控制流)
 6. [函数](#6-函数)
@@ -995,7 +1001,7 @@ q:Queue = queue(maxsize)  # maxsize 为 0 表示无限制队列
 **支持的类型：**
 Queue 支持 int、float、str、bytes、bool 五种类型（编译期分派，根据 put 参数类型自动生成对应的 fromXxx 代码）。**第一次放入的元素类型决定后续所有元素的类型**，类型不匹配的元素会被静默丢弃。
 
-**put/get 多类型分派（v0.0.8 新增）：**
+**put/get 多类型分派：**
 
 | 传入类型 | 生成的 Zig 代码 | QueueItem 内部 |
 |---------|----------------|---------------|
@@ -1296,6 +1302,110 @@ catbasecc hello.cat
 
 # 运行并传入参数
 ./hello hello world 123
+```
+
+#### 2.2.4 main 函数的两种形式（完整 vs 简化）
+
+CatBase 提供两种 `main` 函数形式以适应不同场景：
+
+| 形式     | 签名                              | 适用场景          | 接收命令行参数 |
+|--------|---------------------------------|---------------|----------|
+| **完整形式** | `def main(args: list[str]) { }` | 需要读取用户传入的命令行参数 | ✅ 是      |
+| **简化形式** | `def main() { }`                | 不需要命令行参数的小工具 / 脚本 | ❌ 否（被忽略） |
+
+##### 1. 完整形式：显式接收命令行参数
+
+当你需要在程序里读取用户传入的参数时，必须使用完整形式：
+
+```catbase
+def main(args: list[str]) {
+    print("Number of args: ", len(args), "\n")
+    if len(args) > 1 {
+        print("First user arg: ", args[1], "\n")  # args[0] 是程序名
+    }
+}
+```
+
+运行：
+
+```bash
+./myprog hello world
+# 输出:
+# Number of args: 3
+# First user arg: hello
+```
+
+##### 2. 简化形式：省略参数声明
+
+如果你**确定程序不需要**任何命令行参数，可以直接写成 `def main()`，省略参数声明：
+
+```catbase
+def main() {
+    print("Hello from simplified main!\n")
+    print("This program does not need command-line arguments.\n")
+}
+```
+
+编译器会发出一条**软警告**（不影响编译）：
+
+```
+CatBase compilation warnings (non-fatal):
+  --> test_main_simplified.cat:25
+  |
+   > |   25 | def main() {
+     |   26 |     print("Hello from simplified main!\n")
+  |
+  [main-simplified] main function declared with no parameters.
+    Hint: command-line arguments passed to the compiled binary will be ignored at runtime.
+    To receive command-line arguments, declare main as: def main(args: list[str]) { ... }
+```
+
+运行时的行为：
+
+- 编译**成功**（警告不阻断编译）
+- 二进制**正常运行**
+- 用户传入的命令行参数会被**静默忽略**（不报错、不影响执行）
+
+```bash
+./test_main_simplified             # OK，运行正常
+./test_main_simplified a b c       # OK，a b c 被忽略
+./test_main_simplified --help      # OK，--help 被忽略
+```
+
+##### 3. 编译器规则
+
+- 简化形式下**不生成**读取命令行参数相关的 Zig 代码（更小的二进制、更快的启动）
+- 两种形式**不能**同时存在于一个程序（每个 CatBase 程序只允许一个 `main` 函数）
+- 简化形式**不报错**只发警告，所以不会泄露任何底层语言细节
+- 如果简化的 main 体内仍想读取参数（虽然编译器不会报错），**无法**实现 —— 此时应改回完整形式
+
+##### 4. 适用建议
+
+| 场景                 | 推荐形式               |
+|--------------------|--------------------|
+| CLI 工具（需要解析用户参数）     | 完整形式 `def main(args: list[str])` |
+| GUI 程序 / 后台服务 / 守护进程 | 简化形式 `def main()`      |
+| 教学示例 / Hello World    | 简化形式 `def main()`      |
+| 一次性脚本 / 文件处理工具       | 简化形式 `def main()`      |
+| 库 / 框架的 `demo()` 函数   | 简化形式 `def main()`      |
+
+##### 5. 完整对比示例
+
+```catbase
+# ===== 完整形式（接收参数）=====
+def main(args: list[str]) {
+    print("Program: ", args[0], "\n")
+    i: int = 1
+    while i < len(args) {
+        print("Arg ", i, ": ", args[i], "\n")
+        i = i + 1
+    }
+}
+
+# ===== 简化形式（不接收参数）=====
+def main() {
+    print("This is a simple program with no command-line arguments.\n")
+}
 ```
 
 ### 2.3 注释
@@ -1670,18 +1780,7 @@ After add: {"name": "Tom", "age": 21, "city": "Beijing", "country": "China"}
 
 #### bytes
 
-`bytes` 类型表示**原始字节序列**，是 CatBase 的核心二进制数据类型。在最新版本中，`bytes` 已被实现为**真正的 `[]u8` 切片**（不再是 `runtime.Str` 结构体包装），可以直接作为 C 库的缓冲区使用。
-
-**与旧版本的关键区别**：
-
-| 特性 | 旧版本（Str 包装）| 新版本（真正的 `[]u8`）|
-|------|-----------------|---------------------|
-| 内部表示 | `runtime.Str` 结构体 | `[]u8` 切片（ptr + len）|
-| 内存布局 | 26+ 字节元数据 | 16 字节（ptr + len）+ 数据 |
-| FFI 使用 | ❌ 会破坏结构体 | ✅ **直接传 C 函数** |
-| 索引性能 | 间接访问 | ✅ 直接数组访问 |
-| 智能分配 | ❌ | ✅ 小数据静态池，大数据堆 |
-| 内存隔离 | 复杂 | ✅ 简单明确 |
+`bytes` 类型表示**原始字节序列**，是 CatBase 的核心二进制数据类型。在最新版本中，`bytes` 已被实现为**真正的 `[]u8` 切片**，可以直接作为 C 库的缓冲区使用。
 
 **bytes 字面量语法：** 使用 `b"..."` 前缀创建字节序列。
 
@@ -2157,6 +2256,857 @@ def main(args:list[str]) {
 ```
 
 详见 [bytes 类型](#bytes) 章节。
+
+### 3.4 结构体（struct）
+
+CatBase 支持用户自定义的**结构体（struct）**，让你可以把多个相关字段组合成一个复合类型。struct 适用于表示现实世界中的"事物"——例如坐标点、矩形、张量、配置项等。
+
+#### 3.4.1 定义 struct
+
+使用 `struct` 关键字定义一个结构体，语法如下：
+
+```catbase
+struct StructName {
+    field1: Type1
+    field2: Type2
+    ...
+}
+```
+
+- **struct 名**：建议首字母大写（如 `Point`、`Tensor`），与 CatBase 内置类型风格保持一致
+- **字段名**：小写或下划线命名
+- **字段类型**：可以是 CatBase 的任意合法类型（`int`、`float`、`str`、`list[...]`、`Pointer`、其他 struct 等）
+
+**示例：定义一个二维坐标点**
+
+```catbase
+struct Point {
+    x: int
+    y: int
+}
+```
+
+**示例：定义一个张量（带复杂字段类型）**
+
+```catbase
+struct Tensor {
+    shape: list[int]
+    dtype: int
+    data: Pointer
+}
+```
+
+#### 3.4.2 实例化 struct
+
+使用 **struct 字面量** 创建实例，语法为 `StructName { field: value, ... }`：
+
+```catbase
+# 创建 Point 实例
+a: Point = Point { x: 0, y: 0 }
+b: Point = Point { x: 3, y: 4 }
+
+# 创建 Tensor 实例
+t: Tensor = Tensor { shape: [2, 3], dtype: 1, data: pointer() }
+```
+
+**注意：**
+
+- 字段值可以是任意表达式（包括变量、函数调用、字面量等）
+- 不要求按声明顺序写，但每个字段名只能出现一次
+- 字段类型必须与 struct 定义中的类型兼容
+
+#### 3.4.3 字段访问与赋值
+
+使用 `.` 运算符访问 struct 实例的字段：
+
+```catbase
+def main(args: list[str]) {
+    a: Point = Point { x: 0, y: 0 }
+    print("a.x = ", a.x, ", a.y = ", a.y, "\n")  # a.x = 0, a.y = 0
+
+    # 直接赋值修改字段
+    a.x = 5
+    a.y = 10
+    print("after: ", a.x, ", ", a.y, "\n")        # after: 5, 10
+}
+```
+
+**运行结果：**
+
+```
+a.x = 0, a.y = 0
+after: 5, 10
+```
+
+> struct 字段默认可变，因此 `a.x = 5` 这种直接赋值是允许的。
+
+#### 3.4.4 struct 方法（内置语法，推荐）
+
+方法**直接定义在 struct 内部**，与所属类型强聚合。`self` 是方法接收者，代表调用方法的 struct 实例，由编译器自动注入到参数列表首位（无需显式声明）：
+
+```catbase
+struct Point {
+    x: int
+    y: int
+
+    # struct 内置方法：计算两个 Point 之间的曼哈顿距离
+    def manhattan(other: Point) -> int {
+        dx: int = self.x - other.x
+        dy: int = self.y - other.y
+        return dx + dy
+    }
+
+    # 另一个内置方法：与另一个点求和返回新点
+    def add(other: Point) -> Point {
+        return Point { x: self.x + other.x, y: self.y + other.y }
+    }
+}
+
+def main(args: list[str]) {
+    a: Point = Point { x: 0, y: 0 }
+    b: Point = Point { x: 3, y: 4 }
+
+    d: int = a.manhattan(b)
+    print("manhattan distance = ", d, "\n")   # 7
+
+    s: Point = a.add(b)
+    print("a + b = (", s.x, ", ", s.y, ")\n")
+}
+```
+
+**方法调用语法**：`instance.method(args)` 等价于 Zig 中的 `instance.method(args)`（Zig 会自动处理 `*T` 解引用）。
+
+> **设计要点**：方法必须定义在 `struct { ... }` 块内部。`self` 参数由编译器自动注入，**不要**在调用方传入。如果用旧式 `def StructName.method(self, ...)` 写在外面，编译时会报错并提示迁移。
+
+#### 3.4.5 struct 作为函数参数与返回值
+
+struct 是 CatBase 中**值类型**（与 `Queue`/`Mutex` 等引用类型不同），因此：
+
+- 作为参数传递时默认是**按值复制**（与 Zig 一致）
+- 可以作为函数返回值
+
+```catbase
+# 计算两个 Point 的中点（构造并返回新 Point）
+def midpoint(a: Point, b: Point) -> Point {
+    mx: int = (a.x + b.x) / 2
+    my: int = (a.y + b.y) / 2
+    return Point { x: mx, y: my }
+}
+
+def main(args: list[str]) {
+    a: Point = Point { x: 0, y: 0 }
+    b: Point = Point { x: 3, y: 4 }
+    m: Point = midpoint(a, b)
+    print("midpoint x = ", m.x, ", y = ", m.y, "\n")  # midpoint x = 1, y = 2
+}
+```
+
+**注意：**
+
+- 由于 struct 按值传递，如果 struct 较大（包含 list/Pointer 等），复制开销会比较大。涉及性能敏感场景时可以考虑传 `Pointer` 包装 struct。
+- struct 字段可以包含 `list`、`Pointer` 等复杂类型，struct 实例拥有这些字段的所有权。
+
+#### 3.4.6 完整示例
+
+下面是一个综合示例，演示 struct 的定义、构造、字段访问、内置方法和作为函数返回值：
+
+```catbase
+# CatBase Struct 支持测试
+# 演示自定义结构体的定义、构造、字段访问、内置方法（struct 内部 def）
+
+struct Point {
+    x: int
+    y: int
+
+    # struct 内置方法：与另一个点求和返回新点
+    def add(other: Point) -> Point {
+        return Point { x: self.x + other.x, y: self.y + other.y }
+    }
+
+    # struct 内置方法：返回自身的副本
+    def copy_self() -> Point {
+        return Point { x: self.x, y: self.y }
+    }
+}
+
+# 复杂字段类型
+struct Tensor {
+    shape: list[int]
+    dtype: int
+    data: Pointer
+}
+
+# 普通函数（不依赖 struct），与 struct 内置方法对比
+def midpoint(a: Point, b: Point) -> Point {
+    mx: int = (a.x + b.x) / 2
+    my: int = (a.y + b.y) / 2
+    return Point { x: mx, y: my }
+}
+
+def main(args: list[str]) {
+    a: Point = Point { x: 1, y: 2 }
+    b: Point = Point { x: 3, y: 4 }
+    c: Point = Point { x: 5, y: 5 }
+
+    d: int = a.manhattan(b)
+    print("manhattan distance = ", d, "\n")
+
+    m: Point = midpoint(a, b)
+    print("midpoint x = ", m.x, ", y = ", m.y, "\n")
+
+    t: Tensor = Tensor { shape: [2, 3], dtype: 1, data: pointer() }
+    print("tensor shape: ", t.shape, "\n")
+    print("tensor dtype: ", t.dtype, "\n")
+}
+```
+
+**运行结果：**
+
+```
+a.x = 0, a.y = 0
+manhattan distance = 7
+midpoint x = 1, y = 2
+tensor shape: ["2","3"]
+tensor dtype: 1
+```
+
+#### 3.4.7 struct 与 Python 对比
+
+| 特性     | Python class             | CatBase struct                  |
+| ------ | ------------------------ | ------------------------------- |
+| 定义语法   | `class Point:`           | `struct Point { ... }`          |
+| 实例化    | `Point(0, 0)` 或 `Point(x=0, y=0)` | `Point { x: 0, y: 0 }`       |
+| 字段访问   | `p.x`                    | `p.x`                           |
+| 方法定义   | `def manhattan(self, other):` | `def manhattan(other):` （定义在 struct 内部） |
+| 方法调用   | `a.manhattan(b)`         | `a.manhattan(b)`                |
+| 传值/传引用 | 引用                      | 值（与 Zig 一致）                     |
+| 继承     | 支持                      | 不支持                              |
+
+CatBase 的 struct 设计更接近 Zig 和 C 的 `struct`，简洁高效，适合表示"数据聚合"。
+
+#### 3.4.8 设计理念与限制
+
+- **简洁优先**：CatBase struct 故意保持最小化——只有字段和方法，没有继承、构造函数重载、getter/setter、属性装饰器等复杂特性
+- **按值传递**：与 Zig 一致，避免引用语义带来的隐式共享和别名问题
+- **编译期类型检查**：struct 字段类型在编译期必须完全匹配，避免运行时类型错误
+- **当前不支持**的特性：
+  - struct 继承 / 接口
+  - 构造函数重载（统一使用 `__init__` 或 struct 字面量）
+  - 析构函数（字段由 CatBase 运行时管理，list/Pointer 等资源由 runtime 跟踪释放）
+
+#### 3.4.8.1 class 关键字（struct 的语法糖）
+
+从 CatBase v0.1+ 起，**`class` 关键字是 `struct` 的完全等价别名**。它纯粹是为了降低从 Python/Java/JavaScript 转过来的用户的认知门槛，在语言中**没有任何额外的语义**。
+
+```catbase
+class Point {
+    x: int
+    y: int
+
+    def __init__(self, x: int, y: int) {
+        self.x = x
+        self.y = y
+    }
+}
+
+# 与以下 struct 声明完全等价
+struct Point {
+    x: int
+    y: int
+
+    def __init__(self, x: int, y: int) {
+        self.x = x
+        self.y = y
+    }
+}
+```
+
+##### 关键字选择对照表
+
+| 关键字 | 风格定位 | 适用人群 |
+|---|---|---|
+| `struct` | C / Zig / Rust 风格，强调"值类型聚合" | 系统编程背景（Rust/Go/C 程序员）|
+| `class` | Python / Java / JS 风格，强调"对象模板" | 脚本语言背景（Python/Java/JS 程序员）|
+
+两种关键字**在 CatBase 中完全等价**，用户按个人偏好选用。
+
+##### 为什么 `class` 不带 OOP 特性？
+
+**`class` 是 ADT（代数数据类型）的语法糖，与 `struct` 等价，不包含继承。继承是另一个独立的语言特性。**
+
+这个解释在编程语言理论上有充分依据——C#、Rust、Swift、Kotlin 都是先例：
+
+| 语言 | 类似概念 | 是否带继承 |
+|---|---|---|
+| **C#** | `struct`（值类型）| ❌ 不带 |
+| **Rust** | `struct` + `impl` block | ❌（用 trait）|
+| **Swift** | `struct`（值类型）| ❌ 不带 |
+| **Kotlin** | `data class` | ❌（默认 final）|
+| **Go** | `type T struct { ... }` | ❌ 不带 |
+| **Zig** | `const T = struct { ... }` | ❌ 不带 |
+
+**这 6 个主流语言中，没有任何两个的"class/struct"是必须带继承的。** "class 必须支持继承"是常见误解——事实上 class 在 1967 年（Simula 67）首次引入编程语言时确实和继承一起出现，但"class"的核心含义是"用户定义的复合类型（ADT）"，**继承是后来才加入的可选特性**。
+
+##### CatBase 不支持继承的根本原因
+
+CatBase 选择 **放弃继承**，换取三个核心优势：
+
+- ✅ **清晰的 C ABI（FFI 简单可靠）**
+  - struct/class 的内存布局是编译期完全确定的（无 vtable、无 RTTI）
+  - CatBase 端 struct 与 Zig 端 struct 字节布局一一对应
+  - 跨 FFI 边界传递 struct 零开销
+
+- ✅ **显式的字段布局（编译期已知）**
+  - 所有字段在编译期确定
+  - 内存大小、字段偏移都可在源码中推导
+  - 无需运行时类型信息
+
+- ✅ **零开销（无虚函数表、无 RTTI）**
+  - 方法调用是静态分派（编译期绑定）
+  - 无 dynamic dispatch 开销
+  - 无运行期类型检查开销
+
+**为什么值类型 + 继承语义不明确**：
+
+如果 `class B extends A`，那 `B` 类型的对象赋值给 `A` 变量时：
+- 切掉 B 的字段吗？→ 多态失效
+- 保留 B 的字段吗？→ C ABI 失效（布局变化）
+- 动态调整布局吗？→ 性能与 ABI 都崩溃
+
+CatBase 在"清晰的 C ABI"和"继承"之间选择了前者。
+
+##### 继承的历史
+
+继承（inheritance）作为编程语言特性的历史：
+
+| 年份 | 语言 | 继承的引入 |
+|---|---|---|
+| 1967 | Simula 67 | **首次将"class"和继承一起引入**编程语言 |
+| 1972 | Smalltalk | 完整 OOP 体系（class + 继承 + 动态分派）|
+| 1983 | C++ | 多继承 + 虚函数表（vtable）|
+| 1995 | Java | 单继承 + interface 多实现 |
+| 2000 | C# | 单继承 + interface |
+| 2011 | Kotlin | `open` 关键字控制是否可继承（默认 final）|
+| 2014 | Swift | 单继承 + protocol |
+
+**对比其他语言的继承**：
+
+| 语言 | 继承方式 | 虚函数表 | RTTI | 多继承 | 默认可继承 |
+|---|---|---|---|---|---|
+| C++ | 单/多继承 | ✅ | ✅ | ✅ | ✅ |
+| Java | 单继承 | ✅ | ✅ | ❌（用 interface）| ❌（类默认 final）|
+| C# | 单继承 | ✅ | ✅ | ❌（用 interface）| ✅（除非 sealed）|
+| Python | 多继承 | ✅（MRO）| ✅ | ✅ | ✅ |
+| Rust | 无类继承 | N/A | ❌ | ❌（用 trait）| N/A |
+| Zig | 无继承 | ❌ | ❌ | ❌ | N/A |
+| Go | 无类继承 | ❌（用 interface）| ❌ | ❌ | N/A |
+| **CatBase** | **无继承** | **❌** | **❌** | **❌** | **N/A** |
+
+##### 如何用组合（composition）替代继承
+
+CatBase 不支持继承，但**完全支持组合**。"复用代码"的标准做法是组合：
+
+```catbase
+class Animal {
+    name: str
+    age: int
+
+    def describe() -> str {
+        return self.name + " is " + str(self.age) + " years old"
+    }
+}
+
+// 用组合实现"Dog 包含 Animal"（而不是"Dog 继承 Animal"）
+class Dog {
+    animal: Animal      // 组合：Dog 内部包含一个 Animal
+    breed: str
+
+    def describe() -> str {
+        return self.animal.describe() + " (" + self.breed + ")"
+    }
+}
+
+def make_dog(name: str, age: int, breed: str) -> Dog {
+    return Dog {
+        animal: Animal { name: name, age: age },
+        breed: breed
+    }
+}
+
+def main(args: list[str]) {
+    dog: Dog = make_dog("Rex", 5, "Labrador")
+    print(dog.describe())           # Rex is 5 years old (Labrador)
+    print("Dog's name:", dog.animal.name)  # 访问组合对象的字段
+}
+```
+
+组合相比继承的优势：
+- ✅ **布局可控**：每个 struct 独立，无 vtable
+- ✅ **可读性强**：`dog.animal.name` 比 `dog.name` 更明确（虽然更冗长）
+- ✅ **避免菱形继承问题**：Python/Java/C++ 的多继承菱形问题彻底不存在
+- ✅ **测试简单**：可以单独 mock `Animal`，不依赖继承体系
+
+##### 实际项目建议
+
+| 项目类型 | 推荐关键字 | 理由 |
+|---|---|---|
+| 新项目（面向 Python/JS 用户）| `class` | 降低入门门槛 |
+| 新项目（面向系统程序员）| `struct` | 与 Zig/Rust 风格一致 |
+| 跨 FFI 项目 | `struct` | 与 C ABI 命名一致 |
+| 混合团队 | 统一用一种 | 避免团队内风格不一致 |
+
+**核心原则**：
+1. **同一项目内只用一个关键字**（不要混用，避免阅读者困惑）
+2. **跨 FFI 的类型用 `struct`**（与 C ABI 对齐）
+3. **纯 CatBase 内部类型可以用 `class`**（更熟悉）
+
+##### FFI 完全不受影响
+
+`class` 在 CatBase 中是纯语法糖，**不改变 ABI**：
+
+| 维度 | `struct` | `class` | 是否相同 |
+|---|---|---|---|
+| 字段数 | 由定义决定 | 由定义决定 | ✅ 完全相同 |
+| 内存大小 | 编译期已知 | 编译期已知 | ✅ 完全相同 |
+| C ABI 布局 | struct | struct | ✅ 完全相同 |
+| Zig wrapper 接收 | ✅ | ✅ | ✅ 完全相同 |
+| 跨 .so 边界 | ✅ | ✅ | ✅ 完全相同 |
+
+Zig wrapper 完全不需要知道 CatBase 端用的是 `class` 还是 `struct`——它只关心字段布局。
+
+#### 3.4.9 `__init__` 构造函数语法糖（方式 A：纯语法糖）
+
+CatBase 提供与 Python 类似的 `__init__` 语法糖，但**不向 struct 内存添加任何字段**（ABI 完全不变，FFI 边界不受影响）。
+
+**定义**（在 struct 内部 def 一个 `__init__`）：
+
+```catbase
+struct Point {
+    x: int
+    y: int
+
+    # 编译器把 Point(1, 2) 翻译成 Point { x: 1, y: 2 }
+    # __init__ 自身仍是普通方法，不占 struct 内存
+    def __init__(self, x: int, y: int) {
+        self.x = x
+        self.y = y
+    }
+}
+```
+
+**调用**（三种等价写法）：
+
+```catbase
+# 1. 位置参数
+a: Point = Point(1, 2)
+
+# 2. 关键字参数
+b: Point = Point(x=3, y=4)
+
+# 3. 混合
+c: Point = Point(5, y=6)
+
+# 4. struct literal（始终可用，与 __init__ 完全等价）
+d: Point = Point { x: 7, y: 8 }
+```
+
+**默认值**：
+
+```catbase
+struct Rect {
+    x: int
+    y: int
+    w: int
+    h: int
+
+    def __init__(self, x: int = 0, y: int = 0, w: int = 10, h: int = 10) {
+        self.x = x
+        self.y = y
+        self.w = w
+        self.h = h
+    }
+}
+
+r1: Rect = Rect()              # (0, 0, 10, 10)
+r2: Rect = Rect(x=1, y=2)     # (1, 2, 10, 10)
+r3: Rect = Rect(1, 2, 30, 40) # (1, 2, 30, 40)
+```
+
+**与字面量写法的对比**：
+
+| 写法 | 等价 Zig 输出 |
+|---|---|
+| `Point(1, 2)` | `Point{ .x = 1, .y = 2 }` |
+| `Point(x=3, y=4)` | `Point{ .x = 3, .y = 4 }` |
+| `Point { x: 7, y: 8 }` | `Point{ .x = 7, .y = 8 }` |
+
+三种写法生成的 Zig struct literal **完全相同**，所以：
+
+- ✅ struct 内存布局不变（FFI / C ABI 不受影响）
+- ✅ 跨 FFI 边界接收 Zig wrapper 返回的 struct 仍然正常
+- ✅ 与现有 struct literal 代码完全兼容，可渐进迁移
+
+***
+
+### 3.5 None 类型
+
+`None` 是 CatBase 中的"无值"标记，类似于 Python 的 `None`、C 的 `NULL`、Java 的 `null`。
+它是一个**单例值**，表示"没有值"或"值未知"。
+
+#### 3.5.1 None 的核心特性
+
+- **`None` 不是类型，而是值**：与 `True`、`False` 一样，`None` 是一个具体的值，可以赋给任何支持 `None` 的类型的变量
+- **可以赋给任何类型**：`int`、`str`、`float`、`bool`、`byte`、`bytes`、`any`、`list[T]`、`dict[K, V]` 都可以用 `None` 初始化，表示"该变量当前没有值"
+- **统一空值检查**：用 `is None` / `is not None` 判断变量是否为空
+- **配合 `any` 类型最常用**：`any` 类型可以存储 `None`，是 JSON / 配置解析场景的主力类型
+
+#### 3.5.2 None 的基本用法
+
+**示例：使用 None 初始化变量**
+
+```catbase
+def main(args:list[str]){
+    # 任意类型都可以用 None 初始化
+    xint:int = None
+    ystr:str = None
+    xfloat: float = None
+    xbool: bool = None
+    xbyte: byte = None
+    xbytes: bytes = None
+    xany: any = None
+    xlist: list[int] = None
+    xdict: dict[str, str] = None
+
+    # 用 is None 检查是否为空
+    if xint is None {print("xint is None")}
+    if ystr is None {print("ystr is None")}
+    if xfloat is None {print("xfloat is None")}
+    if xbool is None {print("xbool is None")}
+    if xbyte is None {print("xbyte is None")}
+    if xbytes is None {print("xbytes is None")}
+    if xany is None {print("xany is None")}
+    if xlist is None {print("xlist is None")}
+    if xdict is None {print("xdict is None")}
+
+    # None 值可以直接打印
+    print(xint)        # None
+    print(ystr)        # None
+    print(xfloat)      # None
+    print(xbool)       # None
+    print(xbyte)       # None
+    print(xbytes)      # None
+    print(xany)        # None
+    print(xlist)       # None
+    print(xdict)       # None
+}
+```
+
+**运行结果：**
+
+```
+xint is None
+ystr is None
+xfloat is None
+xbool is None
+xbyte is None
+xbytes is None
+xany is None
+xlist is None
+xdict is None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+```
+
+**示例：用 None 初始化后再赋实际值**
+
+```catbase
+def main(args:list[str]){
+    xint:int = None
+    ystr:str = None
+    xfloat: float = None
+    xbool: bool = None
+    xbyte: byte = None
+    xbytes: bytes = None
+    xany: any = None
+    xlist: list[int] = None
+    xdict: dict[str, str] = None
+
+    # 赋实际值
+    xint = 1
+    ystr = "1"
+    xfloat = 1
+    xbool = True
+    xbyte = b"A"
+    xbytes = b"hello"
+    xany = "a"
+    xlist = [1, 2]
+    xdict = {"b": "AAA"}
+
+    # 用 is not None 检查是否已赋值
+    if xint is not None {print("xint is not None")}
+    if ystr is not None {print("ystr is not None")}
+    if xfloat is not None {print("xfloat is not None")}
+    if xbool is not None {print("xbool is not None")}
+    if xbyte is not None {print("xbyte is not None")}
+    if xbytes is not None {print("xbytes is not None")}
+    if xany is not None {print("xany is not None")}
+    if xlist is not None {print("xlist is not None")}
+    if xdict is not None {print("xdict is not None")}
+}
+```
+
+**运行结果：**
+
+```
+xint is not None
+ystr is not None
+xfloat is not None
+xbool is not None
+xbyte is not None
+xbytes is not None
+xany is not None
+xlist is not None
+xdict is not None
+```
+
+> **完整示例**：[examples/test_none_check2.cat](file:///home/dorobot/CatBase_Worksp/examples/test_none_check2.cat)
+
+#### 3.5.3 None 的类型转换规则
+
+`None` 在类型转换时遵循以下规则（与 Python 一致）：
+
+| 转换          | 结果       | 说明                       |
+|-------------|----------|--------------------------|
+| `int(None)`   | `0`      | 空值视为整数 0                |
+| `float(None)` | `0.0`    | 空值视为浮点 0.0              |
+| `str(None)`   | `"None"` | 字符串形式（与 Python `str(None)` 一致） |
+| `bool(None)`  | `False`  | 空值视为假（与 Python 一致）        |
+| `bytes(None)` | 空 bytes  | 长度为 0 的字节序列              |
+| `byte(None)`  | `0`      | 单字节 0                    |
+| `bin(None)`   | `"0b0"`  | `bin(int(None))`          |
+
+#### 3.5.4 None 与 dict.get()
+
+`dict.get(key)` 在 key 不存在时的行为：
+
+- **`dict[str, any]`**（值类型为 `any`）：找不到时返回 `None`
+- **`dict[str, T]`**（T 为具体类型如 `int` / `str`）：找不到时返回 T 的零值（`0` / `""` / `False`），而不是 `None`
+
+**示例：**
+
+```catbase
+def main(args:list[str]){
+    # dict[str, int] 找不到时返回 0
+    data: dict[str, int] = {"b": 1}
+    v: int = data.get("a")
+    print(v)         # 0
+
+    # dict[str, any] 找不到时返回 None
+    any_data: dict[str, any] = {"name": "Alice", "age": 25}
+    missing: any = any_data.get("nonexistent")
+    if missing is None {
+        print("key not found, value is None")
+    }
+}
+```
+
+详见 [examples/test_dict_get_none.cat](file:///home/dorobot/CatBase_Worksp/examples/test_dict_get_none.cat) 和 [examples/test_dict_get_none_2.cat](file:///home/dorobot/CatBase_Worksp/examples/test_dict_get_none_2.cat)。
+
+#### 3.5.5 None 与 any 类型
+
+`any` 类型可以存储 `None`，是处理 JSON / 配置数据的核心：
+
+- `type(x)` 对 `None` 值的 `any` 变量返回 `any:None`
+- `any` 变量赋值为 `None` 表示空值
+- JSON 解析时 `null` 自动转换为 `None`
+
+```catbase
+def main(args:list[str]) {
+    # 创建一个 any 类型的变量，初始化为 None
+    x: any = None
+    print("x (None) =", str(x), ", type =", type(x))   # x (None) = None , type = any:None
+
+    # 从 dict[str, any] 中取不存在的 key
+    data: dict[str, any] = {"name": "Alice"}
+    missing: any = data.get("missing")
+    if missing is None {
+        print("missing key returns None")              # 命中
+    }
+}
+```
+
+#### 3.5.6 None 与函数返回值
+
+未指定返回类型的函数默认返回 `None`：
+
+```catbase
+def greet(name: str) {       # 无返回类型
+    print("Hello,", name)
+    # 隐式返回 None
+}
+
+def main(args: list[str]) {
+    result: any = greet("CatBase")
+    if result is None {
+        print("greet() returned None")
+    }
+}
+```
+
+#### 3.5.7 None 的使用注意事项
+
+| 注意事项                       | 说明                                                            |
+|----------------------------|---------------------------------------------------------------|
+| 用 `is None` / `is not None` | 不要用 `== None` / `!= None`，应使用关键字 `is` 做身份比较（与 Python 一致）         |
+| 不要和 `0` / `""` 混淆          | `None` 是"无值"，`0` / `""` 是有效值。即便 `bool(None) == False`，也要明确语义 |
+| `list[T] = None` 后访问会报错    | 赋值为 `None` 的容器在解引用前必须先用 `is None` 检查，否则会触发空指针解引用错误              |
+| `int()` / `float()` 等内置函数 | `int(None) = 0` 是默认行为，**不会抛异常**（与 Python 不同）。如需严格区分，转换前先判空      |
+
+***
+
+## 3.6 any 类型的使用注意事项
+
+`any` 是 CatBase 的"万能容器"类型，灵活但有代价。本节专门说明 `any` 变量的**使用边界**，帮你在写出最常见错误之前就避开它们。
+
+### 3.6.1 核心限制：不能用 `.method()` 调用方法
+
+**这是 `any` 类型最常见、最容易踩的坑。**
+
+`any` 类型的局部变量在 CatBase 中是 `const`（不可变）的，因此**不能**在它上面调用方法（如 `.get()`、`.append()` 等），编译器会直接报错并阻断编译。
+
+**错误示例：**
+
+```catbase
+def main(args: list[str]) {
+    raw: list[any] = [{"id": 1, "name": "Alice"}, {"id": 2, "name": "Bob"}]
+    i: int = 0
+    while i < len(raw) {
+        nd: any = raw[i]              # ← 声明为 any
+        name: any = nd.get("name", "") # ← 编译错误：不能在 any 上调用方法
+        print(name, "\n")
+        i = i + 1
+    }
+}
+```
+
+**编译器输出（节选）：**
+
+```
+CatBase compilation errors:
+  --> test_graph.cat:71
+  |
+     |   69 |             i: int = 0
+     |   70 |             while i < len(raw) {
+   > |   71 |                 nd: any = raw[i]
+     |   72 |                 if int(str(nd.get("id", 0))) == target_id {
+     |   73 |                     print("Node{id=", nd.get("id", 0), ", label=", nd.get("label", "")}\n")
+  |
+  [any-misuse-error] cannot call method on variable 'nd' of type 'any'.
+    Hint: Declare 'nd' with a more specific type. For a dict-like value, use 'dict[str, any]'. For a list, use 'list[T]'. For a struct, use the concrete struct name.
+```
+
+错误定位在变量**声明行**（第 71 行 `nd: any = raw[i]`），并提示应当使用的具体类型。
+
+### 3.6.2 推荐写法：使用更具体的类型
+
+只要你能确定值的真实类型，就应该**避免**使用 `any`：
+
+| 场景            | 应当改用                              |
+|---------------|-----------------------------------|
+| 解析 JSON 得到的字典 | `dict[str, any]`（容器用具体类型，值仍可为 any） |
+| 列表里的字典元素     | `dict[str, any]`（同上）               |
+| 列表里的标量        | `int` / `str` / `float` / `bool`    |
+| 自定义结构         | `struct` 或 `class` 名                 |
+
+**正确示例：**
+
+```catbase
+def main(args: list[str]) {
+    raw: list[dict[str, any]] = [{"id": 1, "name": "Alice"}, {"id": 2, "name": "Bob"}]
+    i: int = 0
+    while i < len(raw) {
+        nd: dict[str, any] = raw[i]    # ← 用具体类型 dict[str, any]
+        name: any = nd.get("name", "") # ← 现在可以调用 .get()
+        print(name, "\n")
+        i = i + 1
+    }
+}
+```
+
+### 3.6.3 软警告：`any` 当作 dict / list / struct 使用
+
+当 `any` 变量**没有**调用方法、但其用法已经"明显"是 dict / list / struct 模式（如 `nd["key"]` 索引访问、`.append()` 列表方法、struct 字段访问等）时，编译器会发出**软警告**（`[any-usage]`），提示你把类型声明得更具体。
+
+软警告**不会**阻断编译，但建议尽量消除以提升类型安全性：
+
+```
+CatBase compilation warnings (non-fatal):
+  --> test_graph.cat:191
+  |
+     |  189 |                 nd: any = nodes[i]
+     |  190 |                 if int(str(nd.get("id", 0))) == target_id {
+   > |  191 |                     nd["props"] = props
+     |  192 |                     found = 1
+  |
+  [any-usage] variable 'nd' is declared as 'any' but accessed with dict pattern ("props")
+    Hint: declare it as 'dict[K, V]' (e.g. 'dict[str, any]') so static type checks can verify key access
+```
+
+**修复方法**：把 `nd: any` 改成 `nd: dict[str, any]` 即可同时消除警告和潜在错误。
+
+### 3.6.4 编译器行为总结
+
+| 触发场景                              | 编译器行为        |
+|-----------------------------------|--------------|
+| `any_var.method()` 直接方法调用           | **硬错误**（阻断编译）|
+| `any_var["key"]` 索引访问（dict 模式）     | 软警告（不阻断）     |
+| `any_var.append(...)` 等 list 方法     | 软警告（不阻断）     |
+| `any_var.field` 访问 struct 字段         | 软警告（不阻断）     |
+| 错误信息中提到 `any` 字样                  | 不会有，CatBase 故意屏蔽了底层语言细节 |
+| 错误同时存在时是否还调用底层编译器                  | 不会，CatBase 直接退出 |
+
+### 3.6.5 实用经验法则
+
+1. **能用 `dict[str, any]` 就不要用 `any`**：JSON / 配置 / 解析结果基本都是这种模式
+2. **列表元素类型尽量具体**：`list[dict[str, any]]` 比 `list[any]` 更易读、错误更少
+3. **临时变量如果一定要用 `any`**，也尽量在它上面只做赋值、`str()` / `int()` 转换、`is None` 检查，**不要**调用方法
+4. **看到 `[any-usage]` 警告就修**：它意味着你大概率能用更具体的类型
+5. **看到 `[any-misuse-error]` 必错**：这种代码永远无法通过编译
+
+### 3.6.6 完整对比示例
+
+```catbase
+# ===== 错误写法（any 上调用方法）=====
+def bad_example(data: list[any]) {
+    item: any = data[0]
+    return item.get("name", "")   # 编译错误
+}
+
+# ===== 软警告写法（any 上索引访问）=====
+def warning_example(data: list[any]) {
+    item: any = data[0]
+    return item["name"]           # 软警告
+}
+
+# ===== 正确写法（具体类型）=====
+def good_example(data: list[dict[str, any]]) {
+    item: dict[str, any] = data[0]
+    return item.get("name", "")   # OK
+}
+
+# ===== 灵活但受控的写法（any + 转换）=====
+def flex_example(data: list[any]) {
+    item: any = data[0]
+    return str(item)              # OK：调用内置函数（不是 method）
+}
+```
 
 ***
 
@@ -4346,21 +5296,9 @@ def main(args:list[str]) {
 }
 ```
 
-#### Pointer 方法
+> **完整方法列表**：`is_null` / `get` / `set` 等基础方法见上文；**`Pointer.init()` / `Pointer.of()` / `Pointer.typed()` / `toCPtr()` / `toTypedCPtr()` / `toSlice()` / `pointerToCTy()`** 等用于 C FFI 场景的强类型方法，详见本节末尾"完整的 C ABI 自适应 → Pointer 方法"小节。
 
-| 方法 | 说明 |
-|------|------|
-| `ptr.is_null()` | 判断指针是否为空（返回 bool） |
-| `ptr.get(int)` | 获取指针指向的 int 值（**多类型支持**） |
-| `ptr.get(float)` | 获取指针指向的 float 值 |
-| `ptr.get(str)` | 获取指针指向的 str 值 |
-| `ptr.get(bool)` | 获取指针指向的 bool 值 |
-| `ptr.set(int, value)` | 设置指针指向的 int 值 |
-| `ptr.set(float, value)` | 设置指针指向的 float 值 |
-| `ptr.set(str, value)` | 设置指针指向的 str 值 |
-| `ptr.set(bool, value)` | 设置指针指向的 bool 值 |
-
-#### 多类型支持（v0.0.7+）
+#### 多类型支持
 
 `Pointer` 类型支持通过 comptime 类型参数访问任意基本类型的数据。语法格式：
 
@@ -4515,6 +5453,130 @@ def main(args:list[str]) {
 - 使用 `ptr.set(value)` 时，值的类型应为 `int`（CatBase 的 int 类型在底层映射为 i64）
 - 对空指针调用 `get()` 或 `set()` 会导致程序 panic
 - 使用 `is_null()` 可以安全地检查指针是否为空
+
+#### 完整的 C ABI 自适应
+
+`Pointer` 现在是**真正对接 C ABI 的统一类型**——编译器在生成调用代码时会**自动**选择正确的 C 指针类型（`[*c]u8`、`[*c]i16`、`[*c]f32` 等），用户无需关心底层细节。
+
+**Pointer 结构体字段**
+
+| 字段 | 说明 |
+|------|------|
+| `ptr` | `?*anyopaque` 内部指针 |
+| `elem_size` | 元素字节数（u8=1, i16=2, f32=4 ...） |
+| `elem_count` | 元素个数（如果已知） |
+| `elem_type` | `ElemTypeTag` 元素类型（u8/i8/i16/i32/f32/.../void） |
+
+**Pointer 方法**
+
+| 方法 | 说明 |
+|------|------|
+| `Pointer.init()` | 创建空指针（null） |
+| `Pointer.of(*anyopaque)` | 从不透明指针创建（不接管所有权） |
+| `Pointer.typed([*]u8, tag, count)` | 创建带类型信息的强类型指针 |
+| `ptr.is_null()` | 判断是否为空 |
+| `ptr.get(T)` | 按类型读取值 |
+| `ptr.set(T, value)` | 按类型写入值 |
+| `ptr.toCPtr()` | 解包为 `[*c]u8`（C 通用字节指针，**最常用**） |
+| `ptr.toTypedCPtr(Elem)` | 解包为 `[*c]Elem`（按 elem_type 选 C 指针类型） |
+| `ptr.toSlice(Elem)` | 解包为 `[]Elem`（Zig slice） |
+| `ptr.pointerToCTy(Target)` | 通用 comptime cast 到任意目标类型 |
+
+**类型化 Pointer 构造函数（CatBase 内置全局函数，snake_case）**
+
+| 函数 | 说明 |
+|------|------|
+| `int8_ptr(v: int)` | 把 i8 标量包成 Pointer（用于 `int8_t*` C 参数） |
+| `int16_ptr(v: int)` | 同上，i16 |
+| `int32_ptr(v: int)` | 同上，i32（opus/lame 等常用） |
+| `int64_ptr(v: int)` | 同上，i64 |
+| `uint8_ptr` / `uint16_ptr` / `uint32_ptr` / `uint64_ptr` | 同上，无符号版本 |
+| `float32_ptr(v: float)` | 把 f32 标量包成 Pointer |
+| `float64_ptr(v: float)` | 同上，f64 |
+| `bytes_as_int8_ptr(b: bytes)` | 把 `bytes` 当成 i8 数组的指针 |
+| `bytes_as_int16_ptr(b: bytes)` | 同上，i16（PCM 音频常用） |
+| `bytes_as_int32_ptr` / `bytes_as_int64_ptr` / `bytes_as_float32_ptr` / `bytes_as_float64_ptr` | 同上 |
+| `bytes_as_uint8_ptr` / `bytes_as_uint16_ptr` / `bytes_as_uint32_ptr` / `bytes_as_uint64_ptr` | 同上，无符号 |
+| `str_as_cstr(s: str)` | 把 CatBase str 转成 null-terminated C 字符串 |
+
+> **设计说明**：这些函数是 **CatBase 内置函数**（与 `print()` / `len()` / `bytes_alloc()` 同风格），不是 `runtime` 命名空间下的方法。编译器在生成代码时**自动**把它们包成 `Pointer.typed(runtime.<底层函数>(...), tag, count)`，对用户完全透明。
+
+**C FFI 完整示例：opus 编码器**
+
+```catbase
+import "/usr/lib/x86_64-linux-gnu/libopus.so" as libopus
+from libopus import opus_encoder_create(Fs: int, channels: int, application: int, error: Pointer) -> Pointer
+from libopus import opus_encode(encoder: Pointer, pcm: bytes, frame_size: int, output: Pointer, max_output_len: int) -> int
+from libopus import opus_encoder_destroy(encoder: Pointer)
+
+def main(args: list[str]) {
+    # 创建错误指针（用 int32_ptr 把标量包成 Pointer）
+    err: int = 0
+    err_ptr: Pointer = int32_ptr(err)
+
+    # 创建 opus 编码器（Pointer 返回值自动包成 Pointer.of）
+    enc: Pointer = libopus.opus_encoder_create(48000, 1, 2048, err_ptr)
+    if enc.is_null() {
+        print("opus_encoder_create failed\n")
+        return
+    }
+
+    # 准备 PCM 数据（i16 LE，480 个采样 = 960 字节）
+    pcm: bytes = bytes("00" * 960)
+
+    # 分配输出缓冲
+    output_buf: Pointer = runtime.pointer_of(libc.malloc(4000))
+
+    # 编码（Pointer 参数自动 toCPtr，bytes 参数自动 .ptr）
+    n: int = libopus.opus_encode(enc, pcm, 480, output_buf, 4000)
+    print("encoded ", n, " bytes\n")
+
+    # 清理
+    libopus.opus_encoder_destroy(enc)
+    libc.free(output_buf)
+}
+```
+
+**类型化指针示例：bytes → int16 指针（PCM 音频）**
+
+```catbase
+pcm: bytes = bytes("000011112222")  # 12 字节 = 6 个 int16 采样
+pcm_i16: Pointer = bytes_as_int16_ptr(pcm)  # elem_type = .i16, elem_count = 6
+print("elem_size =", pcm_i16.elem_size)        # 2
+print("elem_count =", pcm_i16.elem_count)      # 6
+print("elem_type =", pcm_i16.elem_type)         # i16
+
+# 自动解包为 [*c]i16 给 C 函数
+# C 函数声明：void process(int16_t *samples, int n)
+# process(pcm_i16.toCPtr(), pcm_i16.elem_count)
+```
+
+**版本化 .so 文件支持**
+
+CatBase 编译器自动识别**版本化的共享库**（`libvorbis.so.0`、`libpng16.so.16`、`libsndfile.so.1` 等），无需任何特殊语法。链接器会自动传递完整路径：
+
+```catbase
+import "/usr/lib/x86_64-linux-gnu/libvorbis.so.0" as libvorbis
+import "/usr/lib/x86_64-linux-gnu/libvorbisenc.so.2" as libvorbisenc
+import "/usr/lib/x86_64-linux-gnu/libpng16.so.16" as libpng
+import "/usr/lib/x86_64-linux-gnu/libsndfile.so.1" as libsndfile
+import "/usr/lib/x86_64-linux-gnu/libmp3lame.so.0" as liblame
+# ... 一律用同样的 lib.xxx() 调用语法
+```
+
+**常见 C 函数参数类型自动转换**
+
+调用 `from libalias import func(args) -> ret` 声明的 C 函数时，CatBase 自动做 ABI 转换：
+
+| CatBase 类型 | 传给 C 的类型 | 转换方式 |
+|-------------|------------|----------|
+| `int` | `c_int` | `@as(c_int, @intCast(arg))` |
+| `str` | `[*c]const u8` | 拷贝为 null-terminated `ArrayList(u8).items.ptr` |
+| `bytes` | `[*c]u8` | `arg.ptr`（slice 数据指针） |
+| `Pointer` | `[*c]u8` | `arg.toCPtr()`（自动按 elem_type 选强类型） |
+| `i8`/`i16`/`i32` | 对应 `*c` 强类型 | 精确对应 |
+
+返回类型为 `Pointer` 时，编译器自动用 `Pointer.of(@ptrCast(...))` 包装返回的 `[*c]u8`。
 
 ***
 
@@ -7900,34 +8962,132 @@ def main(args:list[str]) {
 CatBase 支持三种类型的导入：
 
 1. **导入 .cat 文件**：导入其他 CatBase 源文件，可以调用其中定义的函数
-2. **导入 .so 文件**：导入共享库，调用 C 函数
-3. **导入 .a 文件**：导入静态库，调用 C 函数
+2. **导入 .catc 文件**：导入包文件（功能与 .cat 相同，但用于表达"这是给别人 `import` 的包"），`.catc` 后缀可以省略
+3. **导入 .so 文件**：导入共享库，调用 C 函数
+4. **导入 .a 文件**：导入静态库，调用 C 函数
 
 #### 路径解析规则
 
 当使用 `import` 语句导入文件时，编译器会按照以下规则查找文件：
 
-- **绝对路径**：如果 import 路径是绝对路径（如 `/usr/lib/libmylib.so`），直接在该绝对路径查找文件
-- **相对路径**：如果 import 路径是相对路径（如 `./libmylib.so` 或 `libmylib.so`），**无论命令行当前工作目录是什么**，编译器都会从**被编译的源文件所在目录**开始查找
+- **绝对路径**（如 `/usr/lib/libmylib.so`）：直接在该绝对路径查找文件
+- **`./` 或 `../` 开头的相对路径**（如 `./libmylib.so`、`../common/helper.catc`）：从**被编译的源文件所在目录**开始查找
+- **其他所有路径**（包括裸名 `howee`、`packages/xxx`、`subdir/xxx` 等）：从 **CatBase 编译器所在目录的 `packages/` 子目录**开始查找
+  - 例如 `import "howee"` 解析到 `<编译器目录>/packages/howee`（再自动补 `.catc`）
+  - 例如 `import "packages/foo"` 解析到 `<编译器目录>/packages/packages/foo`（再自动补 `.catc`）
+  - 这种设计允许用户和第三方把通用库统一放到编译器目录的 `packages/` 下管理
 
-> **注意**：
-> - 所有类型的 import（.cat、.so、.a）都遵循同样的路径解析规则
+> **重要约定：**
+> - **只有 `./` 或 `../` 开头的路径才是"相对源文件"路径**。其他任何写法（含 `packages/xxx` 这种带 `/` 但不带 `./` 的路径）一律解析到编译器的 `packages/` 目录
+> - **`.catc` 后缀可以省略**：写 `import "howee"` 与 `import "howee.catc"` 等价
+> - **`.cat` 后缀不能省略**：写 `import "main.cat"` 必须带后缀，否则编译器只尝试补 `.catc` 而不会自动补 `.cat`
+
+#### .catc 与 .cat 的区别
+
+| 文件类型 | 后缀 | 用途 | 后缀可省略？ |
+|----------|------|------|--------------|
+| `.cat`   | 必有 | 主源文件 / 含 `main` 入口的程序 | **不可省略** |
+| `.catc`  | 可省 | 供其他文件 `import` 的包文件 | **可省略**（推荐） |
+
+> **设计建议**：用 `import "..."` 引入的库文件推荐使用 `.catc` 后缀，这样调用方可以省略后缀、代码更整洁。
 
 #### 使用示例
 
 ```catbase
-# 导入同目录下的 CatBase 文件（相对路径）
+# 导入同目录下的 CatBase 文件（相对源文件目录）
 import "./helper.cat" as helper
 
-# 导入同目录下的共享库（相对路径）
-import "./libmylib.so" as mylib
+# 导入同目录下的 .catc 包（.catc 后缀可省略，下行等价）
+import "./util.catc" as util
+import "./util" as util                       # 等价
+
+# 导入编译器 packages/ 下的包（裸名）
+import "json_helper" as jh                    # 解析到 <编译器>/packages/json_helper.catc
+import "json_helper.catc" as jh               # 等价
+
+# 导入编译器 packages/ 下子目录里的包
+import "packages/db/sqlite" as sqlite          # 解析到 <编译器>/packages/packages/db/sqlite.catc
 
 # 导入系统库（绝对路径）
 import "/usr/lib/x86_64-linux-gnu/libm.so" as math
 
-# 导入静态库（相对路径）
+# 导入静态库（相对源文件目录）
 import "./libtest.a" as test
 ```
+
+#### 无引号 Import 语法（推荐）
+
+从最新版本开始，CatBase 的 import 语句支持**完全无引号**的路径和包名，写法更接近 Python / Go 的 `import` 习惯。三条核心规则：
+
+1. **路径和包名一律不加引号**：`import ./foo.cat as bar` 即可
+2. **写目录名时自动补全 index.catc**：`import opus` 自动找 `packages/opus/index.catc`
+3. **不写 `as alias` 时别名默认为包名**：
+   - `import opus` → 别名 `opus`
+   - `import opus/index` → 别名 `opus`（不是 `index`）
+   - `import apkg/test_pkg` → 别名 `apkg`（不是 `test_pkg`）
+   - `import libopus.so` → 别名 `libopus`（去扩展名）
+
+**新语法示例：**
+
+```catbase
+# === 新风格（推荐）：无引号路径 ===
+import opus as opus_lib                       # 默认别名 = "opus"，自动找 packages/opus/index.catc
+import opus/index as opus_lib                 # 显式别名 + 显式文件路径
+import opus                                   # 默认别名 = "opus"，自动找 index.catc
+import apkg/sub_pkg1/sub_pkg_1 as lh          # 任意层级包路径
+import ./local_file as lf                     # 相对路径（源文件所在目录）
+import ../shared/utils as utils               # 上级目录
+import /usr/lib/libopus.so as _opus_native    # 绝对路径
+
+# === 旧风格（仍然兼容）：带引号 ===
+import "opus/index" as opus_lib
+```
+
+> **何时仍需用引号**：当路径中包含**连字符、空格或其他特殊字符**时，必须加引号：
+> `import "/usr/lib/x86_64-linux-gnu/libopus.so" as _opus_native`。
+
+#### 包内全局变量
+
+被 import 的包（`.cat` / `.catc` 文件）可以声明包级全局变量，包内函数可以修改它们，外部通过 `包别名.变量名` 访问。这让包能维护自己的状态（如配置、计数器、缓存等）。
+
+```catbase
+# state.catc（或 state.cat）—— 包内定义全局变量
+counter:int = 0
+label:str = "init"
+items:list[int] = []
+record:dict[str, int] = {"k": 0}
+
+def inc(n:int) {
+    counter = counter + n       # 修改包全局
+    items.append(n)             # 修改包全局 list
+    record["last"] = n          # 修改包全局 dict
+}
+
+def get_summary() -> str {
+    return label + ":" + str(counter)
+}
+```
+
+外部文件使用包全局：
+
+```catbase
+import "./state.cat" as st
+
+def main(args:list[str]) {
+    print(st.counter)            # 读包全局：0
+    print(st.label)              # 读包全局：init
+    st.inc(5)                    # 通过包函数修改全局
+    st.inc(7)
+    print(st.counter)            # 12
+    print(st.items)              # [5, 7]
+    print(st.record)             # {"k": 0, "last": 7}
+    print(st.get_summary())      # init:12
+}
+```
+
+支持的全局变量类型：`int`、`float`、`bool`、`str`、`bytes`、`list[T]`、`dict[K, V]` 等所有 CatBase 类型。
+
+> **实现细节**：包内函数修改 str/list/dict 等容器类型全局时，编译器会自动使用 `page_allocator`（而不是 arena），以保证赋值的对象在函数返回后仍然有效。包内复杂全局变量会在程序启动时由 `st.init()` 自动初始化。
 
 ### 14.1 生成共享库
 

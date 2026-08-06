@@ -3,9 +3,6 @@
 # CatBase 批量测试脚本
 # 用于测试 examples/ 文件夹中的所有 .cat 程序
 
-# 注意：不要使用 set -e，让脚本继续运行所有测试
-# set -e  # 已禁用，允许脚本继续运行即使遇到错误
-
 CATBASE_CC="./bin/catbasecc"
 EXAMPLES_DIR="./examples"
 RESULTS_FILE="test_results.txt"
@@ -36,17 +33,29 @@ echo "时间: $(date)" | tee -a "$RESULTS_FILE"
 echo "========================================" | tee -a "$RESULTS_FILE"
 echo "" | tee -a "$RESULTS_FILE"
 
-# 获取所有 .cat 文件（排除 test_all.sh 自身）
+# 获取所有 .cat 文件
 cat_files=()
 for f in "$EXAMPLES_DIR"/*.cat; do
     basename_file="$(basename "$f")"
-    # 跳过 test_all.sh 和 import_* 文件（这些是被其他程序引用的模块，不是独立程序）
-    if [[ "$basename_file" != "test_all.sh" ]] && [[ ! "$basename_file" =~ ^import_ ]]; then
+    # 跳过以下文件（计入"跳过"统计，不进入实际编译/运行）：
+    #   - test_all.sh   : 本脚本的辅助脚本文件名（即使它不是 .cat 也不会被收集）
+    #   - import_*.cat  : 被其他程序 import 引用的模块（不是独立程序，不能单独编译/运行）
+    #   - test_nocc_*.cat : 标记为"不使用 CatBase 编译器"的测试用例
+    #                       （属于其他工具链的测试，应通过其他方式验证；
+    #                        不应在 catbasecc 批量测试范围内出现）
+    if [[ "$basename_file" != "test_all.sh" ]] && \
+       [[ ! "$basename_file" =~ ^import_ ]] && \
+       [[ ! "$basename_file" =~ ^test_nocc_ ]]; then
         cat_files+=("$f")
+    else
+        # 文件被排除规则过滤，未进入编译/运行流程
+        ((skipped++))
+        SKIPPED_TESTS+=("$basename_file (排除条件)")
     fi
 done
 
-total=${#cat_files[@]}
+# 总数 = examples 文件夹中所有 .cat 文件的数量（包括被排除的）
+total=$(find "$EXAMPLES_DIR" -maxdepth 1 -name "*.cat" | wc -l)
 
 echo "找到 $total 个测试文件" | tee -a "$RESULTS_FILE"
 echo "" | tee -a "$RESULTS_FILE"
@@ -79,15 +88,29 @@ for cat_file in "${sorted[@]}"; do
         elif [[ -f "$executable" ]]; then
             # 运行
             echo "运行中..." | tee -a "$RESULTS_FILE"
-            if timeout 30 "$executable" > /dev/null 2>&1; then
+            output=$(timeout 30 "$executable" 2>&1)
+            exit_code=$?
+            
+            # 检查输出中是否包含 ERROR（文件名包含 error 除外）
+            has_error=0
+            if [[ "$output" == *"ERROR"* ]]; then
+                has_error=1
+            fi
+            
+            if [[ $exit_code -eq 0 && $has_error -eq 0 ]]; then
                 echo -e "${GREEN}✓ 运行成功${NC}" | tee -a "$RESULTS_FILE"
                 ((passed++))
                 PASSED_TESTS+=("$filename")
+            elif [[ $exit_code -eq 0 && $has_error -eq 1 && "$base_name" =~ error ]]; then
+                # 文件名包含 error，预期输出 ERROR
+                echo -e "${GREEN}✓ 运行成功 (预期输出 ERROR)${NC}" | tee -a "$RESULTS_FILE"
+                ((passed++))
+                PASSED_TESTS+=("$filename")
             else
-                exit_code=$?
                 if [[ $exit_code -eq 139 ]] || [[ $exit_code -eq 134 ]]; then
-                    # 139 = SIGSEGV, 134 = SIGABRT (段错误/断言失败)
                     echo -e "${RED}✗ 运行失败 (段错误/崩溃)${NC}" | tee -a "$RESULTS_FILE"
+                elif [[ $has_error -eq 1 ]]; then
+                    echo -e "${RED}✗ 运行失败 (输出包含 ERROR)${NC}" | tee -a "$RESULTS_FILE"
                 else
                     echo -e "${RED}✗ 运行失败 (退出码: $exit_code)${NC}" | tee -a "$RESULTS_FILE"
                 fi
