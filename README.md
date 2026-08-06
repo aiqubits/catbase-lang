@@ -22,7 +22,7 @@
 
 ## ✨ Introduction
 
-**CatBase** is a brand-new statically-typed programming language designed for AI application development and rapid prototyping, created by **Zhong Sheng** from China. Its syntax is similar to Python, but simpler and easier to learn; at the same time, it compiles to native executables with excellent runtime performance, making it particularly suitable for replacing C in **minimal runtime environments**.
+**CatBase** is a brand-new statically-typed programming language designed for AI application development and rapid prototyping, created by Mr. Bell Zhong (钟声) from China. Its syntax is similar to Python, but simpler and easier to learn; at the same time, it compiles to native executables with excellent runtime performance, making it particularly suitable for replacing C in **minimal runtime environments**.
 
 > **Remember these 5 differences, and you can use CatBase smoothly:**
 > 1. Code blocks no longer rely on indentation rules — use `{}` braces instead.
