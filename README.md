@@ -395,14 +395,14 @@ The Software is provided **"AS IS"**, without warranty of any kind, express or i
 
 ## 📞 Contact Us
 
-| Channel                                                | Link                                    |
-| ------------------------------------------------------ | --------------------------------------- |
-| 📧 Email                                                | bell.zhong@dorobot.net                  |
-| 🌐 CatBase Official Website                             | <http://CatBase-lang.com>               |
-| 🏢 Dorobot Technology  (豆子机器人科技（珠海）有限公司) | <http://DoRobotAi.com>                  |
-| 📖 Full Documentation                                   | [doc/catbase.md](doc/catbase.md)        |
-| 🐛 Issue Tracker                                        | [GitHub Issues](../../issues)           |
-| 💡 Feature Suggestions                                  | [GitHub Discussions](../../discussions) |
+| Channel                                                 | Link                                    |
+| ------------------------------------------------------- | --------------------------------------- |
+| 📧 Email                                                 | bell.zhong@dorobot.net                  |
+| 🌐 CatBase Official Website                              | <http://CatBase-lang.com>               |
+| 🏢 Dorobot Technology   (豆子机器人科技（珠海）有限公司) | <http://DoRobotAi.com>                  |
+| 📖 Full Documentation                                    | [doc/catbase.md](doc/catbase.md)        |
+| 🐛 Issue Tracker                                         | [GitHub Issues](../../issues)           |
+| 💡 Feature Suggestions                                   | [GitHub Discussions](../../discussions) |
 
 ---
 
